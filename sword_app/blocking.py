@@ -8,12 +8,12 @@ Block names are from the robot's point of view.
 """
 import numpy as np
 
-BLOCKS = ['guard', 'high', 'high_left', 'high_right', 'mid_left', 'mid_right', 'low_left', 'low_right', 'thrust']
+BLOCKS = ['guard', 'high', 'high_left', 'high_right', 'mid_left', 'mid_right']
 
-# (height band, side band) -> block. Side +1 is the robot's left.
+# (height band, side band) -> block. Side +1 is the robot's left. The centre and the low row are guard.
 ZONES = {(1, 1): 'high_left', (1, 0): 'high', (1, -1): 'high_right',
-         (0, 1): 'mid_left', (0, -1): 'mid_right',
-         (-1, 1): 'low_left', (-1, 0): 'guard', (-1, -1): 'low_right'}
+         (0, 1): 'mid_left', (0, 0): 'guard', (0, -1): 'mid_right',
+         (-1, 1): 'guard', (-1, 0): 'guard', (-1, -1): 'guard'}
 
 
 def band(value, threshold, margin, current):
@@ -36,12 +36,10 @@ class Blocker:
         self.strike, self.slow_since = False, None
         self.predicted = np.zeros(3)
 
-    def _classify(self, offset, velocity):
+    def _classify(self, offset):
         c = self.cfg
         height = band(offset[1], c['height_m'], c['hysteresis_m'], self.bands[0])
         side = band(offset[0], c['side_m'], c['hysteresis_m'], self.bands[1])
-        if (height, side) == (0, 0):
-            return ('thrust' if velocity[2] > c['thrust_speed_m_s'] else 'guard'), (0, 0)
         return ZONES[(height, side)], (height, side)
 
     def _switch(self, zone, bands):
@@ -62,7 +60,7 @@ class Blocker:
             # rather than chasing the blade across its path.
             if not self.strike:
                 self.strike = True
-                self._switch(*self._classify(offset, self.velocity))
+                self._switch(*self._classify(offset))
             self.slow_since = None
             self.predicted = offset
             return self.zone
@@ -73,7 +71,7 @@ class Blocker:
 
         # Not striking: cover where the tip is heading, switching only once it settles there.
         self.predicted = offset + self.velocity * c['lookahead_s']
-        zone, bands = self._classify(self.predicted, self.velocity)
+        zone, bands = self._classify(self.predicted)
         if zone == self.zone:
             self.candidate = None
         elif zone != self.candidate:

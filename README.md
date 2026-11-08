@@ -27,11 +27,11 @@ Only the end pose of each block is recorded; the app plans the motion between th
 2. Put the sword where the block should be and press **Save** next to its name. Poses are saved in `var/blocks.json`.
 3. Press **Move here** to replay a block slowly and check it.
 
-Blocks: guard, high, high left, high right, mid left, mid right, low left, low right, centre (thrust). Names are from the **robot's** point of view (stand behind it): your right-side strikes arrive on the robot's left. Untaught blocks fall back to guard. Keep blocks compact and in front of the robot, angle the blade across the incoming strike, avoid poses with J5 near 0° (wrist singularity), and check transitions between neighbouring blocks.
+Blocks: guard, high, high left, high right, mid left, mid right. Their joint angles are set in the `[blocks]` section of `config.toml`; saving a block in the app overrides it (delete `var/blocks.json` to go back to the config values). Names are from the **robot's** point of view (stand behind it): your right-side strikes arrive on the robot's left. Keep blocks compact and in front of the robot, angle the blade across the incoming strike, and check transitions between neighbouring blocks.
 
 ## How blocking works
 
-The blade tip's position relative to your guard picks a zone on a 3×3 grid (left/centre/right × high/mid/low). In the centre, a fast push toward the robot is a thrust; otherwise it is guard. The Mac shows the grid live, so you can check it before the robot moves.
+The blade tip's position relative to your guard picks a zone on a 3×3 grid (left/centre/right × high/mid/low). The centre and the whole low row map to guard. The Mac shows the grid live, so you can check it before the robot moves.
 
 - **Look-ahead**: the zone is chosen from where the tip will be `lookahead_s` ahead, to hide system delay.
 - **Hysteresis and dwell**: zone edges overlap by `hysteresis_m`, and the tip must stay in a new zone for `dwell_s` before the robot switches.

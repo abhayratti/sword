@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 def create_app(root=ROOT):
     config = tomllib.loads((root/'config.toml').read_text())
     state = State({**config['tracking'], **config['blocking']}, root/'var')
-    robot = Robot(state, config['robot'], root/'var')
+    robot = Robot(state, config['robot'], root/'var', config['blocks'])
     key = secrets.token_urlsafe(32)
     owner = None
 

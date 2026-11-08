@@ -1,9 +1,9 @@
 import {Tracker} from './tracking.js';
 const $=id=>document.getElementById(id);let key=null;
 const canvas=$('scene'),ctx=canvas.getContext('2d');
-const LABELS={guard:'Guard',high:'High',high_left:'High left',high_right:'High right',mid_left:'Mid left',mid_right:'Mid right',low_left:'Low left',low_right:'Low right',thrust:'Centre (thrust)'};
+const LABELS={guard:'Guard',high:'High',high_left:'High left',high_right:'High right',mid_left:'Mid left',mid_right:'Mid right'};
 // Grid cell for each block, as [row, column] seen from behind the robot (robot's left on the left).
-const CELLS={high_left:[0,0],high:[0,1],high_right:[0,2],mid_left:[1,0],guard:[1,1],thrust:[1,1],mid_right:[1,2],low_left:[2,0],low_right:[2,2]};
+const CELLS={high_left:[0,0],high:[0,1],high_right:[0,2],mid_left:[1,0],guard:[1,1],mid_right:[1,2]};
 const tracker=new Tracker(text=>{$('device-message').textContent=text;},()=>{action('stop').catch(()=>{});$('track').firstChild.textContent='Start tracking on this headset ';});
 for(let i=1;i<=6;i++){const node=document.createElement('div');node.className='joint';node.innerHTML=`<label>J${i}</label><strong>—</strong><em>No feedback</em>`;$('joints').append(node);}
 function notice(text){$('notice').textContent=text;$('notice').hidden=!text;}
@@ -47,9 +47,9 @@ function draw(s){
     const active=cell&&cell[0]===r&&cell[1]===c;
     ctx.fillStyle=active?(t.strike?'#c0503a':'#79e2cf55'):'transparent';ctx.fillRect(xs[c],ys[r],xs[c+1]-xs[c],ys[r+1]-ys[r]);
     ctx.strokeStyle='#c5ced455';ctx.lineWidth=2;ctx.strokeRect(xs[c],ys[r],xs[c+1]-xs[c],ys[r+1]-ys[r]);
-    const name=Object.keys(CELLS).find(n=>n!=='thrust'&&CELLS[n][0]===r&&CELLS[n][1]===c)||'guard';
+    const name=Object.keys(CELLS).find(n=>CELLS[n][0]===r&&CELLS[n][1]===c)||'guard';
     ctx.fillStyle='#c5ced4';ctx.font='bold 26px system-ui';ctx.textAlign='center';
-    ctx.fillText(r===1&&c===1?'Guard / thrust':LABELS[name],(xs[c]+xs[c+1])/2,ys[r]+40);
+    ctx.fillText(LABELS[name],(xs[c]+xs[c+1])/2,ys[r]+40);
   }
   if(t.offset&&s.tracking.guard_set){
     ctx.strokeStyle='#edb775';ctx.lineWidth=3;ctx.beginPath();ctx.arc(X(t.predicted[0]),Y(t.predicted[1]),18,0,7);ctx.stroke();

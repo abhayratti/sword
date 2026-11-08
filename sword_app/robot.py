@@ -23,10 +23,10 @@ def joint_step(target, actual, previous, dt, cfg):
 
 
 class Robot:
-    def __init__(self, state, config, storage):
+    def __init__(self, state, config, storage, blocks):
         self.state, self.cfg, self.storage = state, config, Path(storage)
         self.blocks_file = self.storage / 'blocks.json'
-        self.blocks = {'guard': list(config['guard_deg'])}
+        self.blocks = {name: list(map(float, pose)) for name, pose in blocks.items()}  # from config.toml
         if self.blocks_file.exists(): self.blocks.update(json.loads(self.blocks_file.read_text()))
         self.jobs = queue.Queue()
         self.closed, self.stop_requested = threading.Event(), threading.Event()

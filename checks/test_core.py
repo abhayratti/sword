@@ -15,7 +15,7 @@ from sword_app.state import State
 ROOT = Path(__file__).resolve().parents[1]
 CFG = tomllib.loads((ROOT/'config.toml').read_text())
 ZCFG = {**CFG['tracking'], **CFG['blocking']}
-GUARD = CFG['robot']['guard_deg']
+GUARD = CFG['blocks']['guard']
 
 
 def run(blocker, points, start=0., rate=90):
@@ -61,11 +61,12 @@ class Blocking(unittest.TestCase):
         self.assertTrue(b.strike)
         after = run(b, [[-.3, -.3, 0]] * 60, 2)
         self.assertEqual(after[5], 'high_left')  # still locked just after the strike
-        self.assertEqual(after[-1], 'low_right')  # then covers where the sword now is
+        self.assertEqual(after[-1], 'guard')  # then covers where the sword now is (low counts as guard)
 
-    def test_thrust(self):
+    def test_low_and_centre_are_guard(self):
         b = Blocker(ZCFG)
-        self.assertEqual(run(b, [[0, 0, i / 90] for i in range(30)])[-1], 'thrust')  # 1 m/s toward the robot
+        self.assertEqual(run(b, [[.3, -.3, 0]] * 30)[-1], 'guard')
+        self.assertEqual(run(b, [[0, 0, i / 90] for i in range(30)], 1)[-1], 'guard')  # thrust: no block
 
 
 class Tracking(unittest.TestCase):
@@ -115,7 +116,7 @@ class RobotLoop(unittest.TestCase):
         state = State(ZCFG, tmp)
         state.neutral = {'tip': np.zeros(3), 'frame': np.eye(3)}
         state.pose = {'p': np.zeros(3), 'r': np.eye(3), 'at': time.monotonic() + 60, 'head_q': [0, 0, 0, 1]}
-        robot = Robot(state, CFG['robot'], tmp); robot.arm = FakeArm()
+        robot = Robot(state, CFG['robot'], tmp, CFG['blocks']); robot.arm = FakeArm()
         return state, robot
 
     def test_follows_the_chosen_block_and_stops(self):
@@ -139,8 +140,8 @@ class RobotLoop(unittest.TestCase):
     def test_save_block(self):
         with tempfile.TemporaryDirectory() as tmp:
             _, robot = self._robot(tmp)
-            robot._save_block('high')
-            self.assertIn('high', Robot(robot.state, CFG['robot'], tmp).blocks)
+            robot.arm.q = np.array(GUARD) + 1; robot._save_block('high')
+            np.testing.assert_allclose(Robot(robot.state, CFG['robot'], tmp, CFG['blocks']).blocks['high'], np.array(GUARD) + 1)
 
 
 class Server(unittest.IsolatedAsyncioTestCase):
