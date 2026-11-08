@@ -33,7 +33,7 @@ async function drawFrame(vision){
   if(frameBusy||!vision.frame_id||renderedFrame===vision.frame_id)return;
   frameBusy=true;
   try{
-    const res=await fetch('/api/frame?id='+vision.frame_id);if(!res.ok)return;
+    const res=await fetch('/api/frame');if(!res.ok)return;
     const bitmap=await createImageBitmap(await res.blob());canvas.width=vision.width;canvas.height=vision.height;ctx.drawImage(bitmap,0,0);bitmap.close();
     for(const object of vision.objects){
       const p=object.corners;ctx.strokeStyle=colors[object.name];ctx.lineWidth=3;ctx.beginPath();p.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.stroke();
@@ -49,10 +49,10 @@ function update(s){
   state=s;key=s.key;$('link-light').className='good';$('link-state').textContent='Mac connected';
   const t=s.tracking,r=s.robot,cam=s.vision.camera||{};
   $('pose-quality').textContent=t.fresh?(t.kind==='hand'?'HAND ESTIMATE':'LIVE 3D POSE'):'NO LIVE 3D POSE';
-  $('guard').disabled=!t.fresh||['running','holding','homing','working'].includes(r.state);
+  $('guard').disabled=!t.fresh;
   $('guard-status').textContent=t.guard_set?'Guard set. Move naturally from this position.':'Hold your normal guard, then set it here. No touching the blade base or tip.';
-  const connected=!!r.firmware&&['connected','stopped'].includes(r.state);
-  $('home').disabled=!connected;$('mirror').disabled=!connected||!t.fresh||!t.guard_set;
+  const connected=!!r.firmware&&['connected','stopped','fault'].includes(r.state);
+  $('home').disabled=!connected;$('mirror').disabled=!connected||!t.guard_set;
   $('connect').disabled=['working','running','holding','homing'].includes(r.state);
   $('connect').textContent=['disconnected','fault'].includes(r.state)?'Connect':'Reconnect';
   $('robot-status').textContent=r.reason;$('mirror').firstChild.textContent=['running','holding'].includes(r.state)?'Mirroring session open ':'Start mirroring ';
@@ -70,7 +70,7 @@ function update(s){
   }
   if(s.frame_age_ms!==null&&s.frame_age_ms<500)drawFrame(s.vision);
   else if(renderedFrame!==null){ctx.clearRect(0,0,canvas.width,canvas.height);renderedFrame=null;$('empty').hidden=false;}
-  if(r.speed_caps)$('motion-detail').textContent=`Configured joint caps: ${r.speed_caps.join(' / ')}°/s. One workspace, no SF1 prior, no session timer. Tracking loss holds; Stop and controller faults end the session. Hardware alignment and latency remain to be verified.`;
+  if(r.speed_caps)$('motion-detail').textContent=`Joint speed caps: ${r.speed_caps.join(' / ')}°/s. Tracking loss holds the last target; Stop and controller errors end the session.`;
 }
 async function poll(){
   try{const res=await fetch('/api/state',{cache:'no-store',signal:AbortSignal.timeout(1500)});if(!res.ok)throw new Error();update(await res.json());}

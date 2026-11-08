@@ -1,39 +1,24 @@
-# One configuration. No learned stroke priors or hidden speed profiles.
 [robot]
 ip = "192.168.1.206"
-firmware = [2, 2, 2]
 guard_deg = [-1.0, 52.1, -106.7, 0.0, -20.7, 0.1]
-joint_radius_deg = [33.0, 27.0, 33.0, 43.0, 38.0, 43.0]
-max_speed_deg_s = [82.0, 24.0, 32.0, 44.0, 36.0, 44.0]
-max_accel_deg_s2 = [130.0, 38.0, 50.0, 69.0, 75.0, 90.0]
+max_speed_deg_s = [120.0, 90.0, 90.0, 120.0, 120.0, 120.0]
+max_accel_deg_s2 = [500.0, 350.0, 400.0, 600.0, 600.0, 600.0]
 kp = 8.0
-position_gain = 0.50
-rotation_gain = 1.00
-position_deadband_m = 0.008
-angle_deadband_deg = 2.0
-velocity_lease_s = 0.12
-tracking_timeout_s = 0.15
-# These keep the previously admitted workspace. They are NOT a collision model.
-minimum_height_mm = 310.7
-height_tolerance_mm = 0.5
-target_height_clearance_mm = 2.5
-max_point_speed_mm_s = 850.0
-# Estimated previous mount. A physical mounting check remains necessary.
-mount_reference_deg = [0.4, 7.3, -79.5, 0.0, 73.5, 0.0]
-mount_base_world_mm = [60.0, 0.0, -140.0]
-blade_length_mm = 420.0
+position_gain = 1.0
+rotation_gain = 1.0
+# Hardware watchdog: each velocity command expires after this long if the app stops sending.
+velocity_lease_s = 0.2
+# A tracked pose is used for this long after it was received.
+tracking_timeout_s = 0.5
+home_speed_deg_s = 20.0
 
 [vision]
-reference = "checkerboard"
 dictionary = "DICT_4X4_50"
 human_id = 10
 robot_id = 20
-anchor_id = 30
 marker_size_m = 0.05
-# Measured marker centre to tip; both sword overlays. Full robot blade remains 420 mm above.
+# Marker centre to tip, for the blade overlay.
 blade_length_m = 0.40
-max_reprojection_px = 2.0
-minimum_marker_edge_px = 25.0
 checkerboard_inner = [9, 6]
 checkerboard_square_m = 0.025
 minimum_calibration_views = 12
