@@ -1,0 +1,1158 @@
+{
+  "scope": "Clean camera-tracking and non-contact pose-mirroring implementation",
+  "offline_contract_checks": {
+    "passed": 33,
+    "physical_hardware_used": false
+  },
+  "browser_checks": {
+    "passed": 10,
+    "physical_camera_used": false,
+    "synthetic_print_sheet_video": true,
+    "display_callbacks_disabled_during_camera_test": true,
+    "asynchronous_jpeg_disabled_during_camera_test": true
+  },
+  "print_kit": {
+    "pages": 2,
+    "marker_ids_detected_from_render": [
+      10,
+      20,
+      30
+    ],
+    "checkerboard_corners_detected": 54,
+    "marker_black_square_mm": 50,
+    "checkerboard_square_mm": 25
+  },
+  "actual_robot_read_only_connection": "passed",
+  "actual_robot_encoder_feedback": "six axes read",
+  "actual_quest_camera_capture": {
+    "status": "passed",
+    "resolution": [
+      1280,
+      960
+    ],
+    "facing_mode": "environment",
+    "negotiated_fps": 30,
+    "displayed_fps_measured": false,
+    "capture_method": "MediaStreamTrackProcessor with one-frame queue and direct JPEG encoding"
+  },
+  "quest_cast": "working in user window, confirmed by user",
+  "physical_camera_calibration": {
+    "status": "factory_profile_checked_and_reloaded",
+    "method": "Active Camera2 intrinsics transformed by native crop/output size; zero residual distortion assumed",
+    "lens_parameters_fitted_to_check_images": false,
+    "fresh_checkerboard_views": 3,
+    "rms_px": [
+      0.5835770964622498,
+      1.1836421489715576,
+      1.0926674604415894
+    ],
+    "threshold_rms_px": 1.5,
+    "earlier_12_view_fit": "rejected and not installed; numeric errors were not retained by that version",
+    "print_scale_mm_confirmed": true,
+    "limitation": "Reprojection consistency only; not absolute distance, mounted sword alignment or moving/occluded tracking"
+  },
+  "physical_sword_alignment": "failed visual alignment check: projected cyan and orange lines miss actual blade tips in a current frame; no exact metric error measured",
+  "powered_motion_after_cleanup": "Actual homing succeeded and all six encoders moved during live following; accuracy and sustained following not yet established",
+  "end_to_end_latency": "not measured",
+  "contact_interception": "not implemented",
+  "session_timer_s": null,
+  "sf1_prior": false,
+  "device_network": "Mac and Quest exchanged ICMP packets in both directions; Quest route uses Wi-Fi, robot route uses Ethernet",
+  "quest_browser_version": "154.1.0.32.54.1101200317",
+  "actual_marker_detection": {
+    "status": "passed",
+    "ids": [
+      10,
+      20,
+      30
+    ],
+    "source": "physical printed page seen by Quest camera"
+  },
+  "actual_print_measurement": {
+    "marker_black_square_mm": 50,
+    "source": "user confirmed measurement",
+    "marker_to_tip_cm": {
+      "human": 40,
+      "robot": 40
+    },
+    "marker_to_tip_note": "User answered 40 to the question requesting both lengths; applied to both overlays."
+  },
+  "mounted_marker_check": {
+    "status": "Both swords and fixed board detected; continuous and accurate blade tracking not yet verified",
+    "session": "mounted-20261108T095208Z",
+    "duration_s": 25.08,
+    "sampled_fresh_frames": 269,
+    "all_three_detected": 91,
+    "all_three_3d": 72,
+    "per_marker": {
+      "10": {
+        "detected_frames": 138,
+        "pose_frames": 116,
+        "mean_reprojection_px": 1.169854188273693,
+        "reasons": [
+          "Marker orientation ambiguous; tilt it slightly",
+          "Marker pose fit is poor"
+        ]
+      },
+      "20": {
+        "detected_frames": 217,
+        "pose_frames": 207,
+        "mean_reprojection_px": 1.0894391466166087,
+        "reasons": [
+          "Marker orientation ambiguous; tilt it slightly",
+          "Marker pose fit is poor"
+        ]
+      },
+      "30": {
+        "detected_frames": 0,
+        "pose_frames": 0,
+        "mean_reprojection_px": null,
+        "reasons": []
+      },
+      "board": {
+        "detected_frames": 134,
+        "pose_frames": 134,
+        "mean_reprojection_px": 0.7113391752563306,
+        "reasons": []
+      }
+    },
+    "analysis": {
+      "forwarded_camera_fps_estimate": 11.856741229678525,
+      "fresh_frame_age_p95_ms": 111.69999999999999,
+      "all_three_2d_fraction": 0.3382899628252788,
+      "all_three_3d_fraction": 0.26765799256505574,
+      "all_three_3d_given_2d_fraction": 0.7912087912087912,
+      "fresh_relative_pose_fraction": 0.2533783783783784,
+      "tracking_reasons": {
+        "Tracking": 75,
+        "Your sword not fully visible": 38,
+        "Your sword not fully visible; Fixed reference not fully visible": 102,
+        "Your sword: Marker orientation ambiguous; tilt it slightly; Fixed reference not fully visible": 2,
+        "Tracking paused; the last pose is stale": 12,
+        "Your sword: Marker orientation ambiguous; tilt it slightly": 10,
+        "Your sword: Marker pose fit is poor": 5,
+        "Fixed reference not fully visible": 33,
+        "Your sword: Marker pose fit is poor; Fixed reference not fully visible": 5,
+        "Duplicate marker ID visible; use one copy of each ID": 14
+      },
+      "orientation_sources": {
+        "10": {
+          "image": 113,
+          "recent_pose_and_image": 3
+        },
+        "20": {
+          "image": 207
+        }
+      },
+      "robot_relative_to_board": {
+        "assumption": "Robot and board fixed; consistency only, not accuracy",
+        "samples": 117,
+        "position_deviation_p95_mm": 27.682576346322016,
+        "rotation_deviation_p95_deg": 7.502224657514592
+      }
+    },
+    "visual_review": "All48 recorded frames inspected as a contact sheet. Independent current frame shows both accepted blade projections missing the physical tips. Some images include the app preview on a laptop; it is a possible source of duplicate marker detections, not confirmed for every rejection.",
+    "next": "Keep fixed board within camera view through intended motions; verify rigid marker-to-blade axis and tip offset. Remove live preview from camera view before interpreting duplicate-ID errors. No new lens calibration required.",
+    "powered_motion": "not performed"
+  },
+  "fixed_reference": {
+    "kind": "checkerboard",
+    "marker_30_used": false,
+    "physical_check": {
+      "detected_frames": 255,
+      "accepted_pose_frames": 254,
+      "sampled_fresh_frames": 277
+    },
+    "note": "Acceptance rate is not independent orientation ground truth. Keep the board stationary; reset neutral if moved.",
+    "latest_physical_check": {
+      "detected_frames": 134,
+      "accepted_pose_frames": 134,
+      "sampled_fresh_frames": 269
+    }
+  },
+  "jpeg_scheduling_diagnostic": {
+    "hardware": "actual Quest physical camera track",
+    "resolution": [
+      1280,
+      960
+    ],
+    "jpeg_quality": 0.85,
+    "alternating_samples_per_method": 4,
+    "toBlob_ms": [
+      942.4,
+      183.2,
+      483.4,
+      541.9
+    ],
+    "toDataURL_ms": [
+      27.7,
+      25.3,
+      26.6,
+      26.5
+    ],
+    "scope": "Encoding-path timing, not camera-to-actuator latency"
+  },
+  "timestamp_protocol": {
+    "new_frame_after_challenge_required": true,
+    "encoding_delay_subtracted_twice": false,
+    "freshness_timeout_ms": 150,
+    "unknown_physical_camera_latency": true
+  },
+  "pose_disambiguation": {
+    "method": "Select between current image pose candidates using a recent measured orientation transported through the current fixed board",
+    "history_max_age_ms": 150,
+    "never_substitutes_for_occluded_marker": true,
+    "hardware_accuracy": "Three human-marker poses used history in this check; no independent accuracy validation. Do not attribute cross-session differences solely to this change."
+  },
+  "mounted_marker_history": [
+    {
+      "session": "mounted-20261108T092545Z",
+      "interpretation": "Marker20 remounted facing camera; small reference30 remained low. All markers readable but 3D continuity poor.",
+      "summary": {
+        "directory": "work/sword-qa/mounted-20261108T092545Z",
+        "duration_s": 25.04,
+        "sample_count": 294,
+        "unique_fresh_frames_observed": 286,
+        "saved_images": 49,
+        "last_frame_age_ms": 82,
+        "per_marker": {
+          "10": {
+            "detected_frames": 267,
+            "pose_frames": 229,
+            "mean_reprojection_px": 0.5433713893393892,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly",
+              "Marker pose fit is poor"
+            ]
+          },
+          "20": {
+            "detected_frames": 286,
+            "pose_frames": 263,
+            "mean_reprojection_px": 0.5762648511635486,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly",
+              "Marker pose fit is poor"
+            ]
+          },
+          "30": {
+            "detected_frames": 194,
+            "pose_frames": 146,
+            "mean_reprojection_px": 0.19722606352696273,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly"
+            ]
+          }
+        },
+        "all_three_2d_frames": 191,
+        "all_three_3d_frames": 111,
+        "fresh_relative_pose_samples": 81,
+        "robot_states": [
+          "disconnected"
+        ]
+      },
+      "analysis": {
+        "forwarded_camera_fps_estimate": 14.074905766300425,
+        "fresh_frame_age_p95_ms": 88.0499999999999,
+        "all_three_2d_fraction": 0.6678321678321678,
+        "all_three_3d_fraction": 0.3881118881118881,
+        "fixed_pair_assumption": "Robot and reference did not move during the check; inspect images before interpreting as jitter.",
+        "robot_relative_to_reference": {
+          "samples": 134,
+          "median_position_m": [
+            -0.0789725839481179,
+            0.41209337365360915,
+            0.02649250883441636
+          ],
+          "position_deviation_p95_mm": 64.12869408194976,
+          "rotation_deviation_p95_deg": 10.651495852572864,
+          "distance_median_m": 0.420545636725317,
+          "distance_range_m": [
+            0.40892549431700914,
+            0.46073857625704323
+          ]
+        },
+        "fresh_relative_pose_fraction": 0.2755102040816326,
+        "tracking_reasons": {
+          "Tracking paused; the last pose is stale": 45,
+          "Tracking": 81,
+          "Need calibrated camera plus visible sword and fixed-reference markers": 168
+        },
+        "orientation_sources": {
+          "image": 492
+        }
+      }
+    },
+    {
+      "session": "mounted-20261108T093035Z",
+      "interpretation": "Reference30 raised and angled. Visibility improved while accepted 3D continuity worsened; result retained.",
+      "summary": {
+        "directory": "work/sword-qa/mounted-20261108T093035Z",
+        "duration_s": 25.09,
+        "sample_count": 294,
+        "unique_fresh_frames_observed": 285,
+        "saved_images": 49,
+        "last_frame_age_ms": 71,
+        "per_marker": {
+          "10": {
+            "detected_frames": 278,
+            "pose_frames": 219,
+            "mean_reprojection_px": 0.7499167620795503,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly",
+              "Marker pose fit is poor"
+            ]
+          },
+          "20": {
+            "detected_frames": 255,
+            "pose_frames": 134,
+            "mean_reprojection_px": 0.3759658225158702,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly"
+            ]
+          },
+          "30": {
+            "detected_frames": 257,
+            "pose_frames": 43,
+            "mean_reprojection_px": 0.24143542232381743,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly"
+            ]
+          }
+        },
+        "all_three_2d_frames": 225,
+        "all_three_3d_frames": 14,
+        "fresh_relative_pose_samples": 23,
+        "robot_states": [
+          "disconnected"
+        ]
+      },
+      "analysis": {
+        "forwarded_camera_fps_estimate": 14.169068203650337,
+        "fresh_frame_age_p95_ms": 87.34999999999997,
+        "all_three_2d_fraction": 0.7894736842105263,
+        "all_three_3d_fraction": 0.04912280701754386,
+        "fixed_pair_assumption": "Robot and reference remained stationary during the check; position deviation describes consistency, not absolute accuracy.",
+        "robot_relative_to_reference": {
+          "samples": 19,
+          "median_position_m": [
+            0.19040701212483774,
+            0.05185116419791789,
+            0.36419561857250093
+          ],
+          "position_deviation_p95_mm": 130.96211219474426,
+          "rotation_deviation_p95_deg": 26.81013315007017,
+          "distance_median_m": 0.41251324547356605,
+          "distance_range_m": [
+            0.38331874081483647,
+            0.44088515717474547
+          ]
+        },
+        "fresh_relative_pose_fraction": 0.0782312925170068,
+        "tracking_reasons": {
+          "Need calibrated camera plus visible sword and fixed-reference markers": 261,
+          "Tracking": 23,
+          "Tracking paused; the last pose is stale": 10
+        },
+        "orientation_sources": {
+          "image": 353
+        }
+      }
+    },
+    {
+      "session": "mounted-20261108T093922Z",
+      "interpretation": "Large fixed checkerboard substituted. Board pose accepted in 254/255 detections; sword orientations still drop. Before timestamp and JPEG scheduling fixes.",
+      "summary": {
+        "directory": "work/sword-qa/mounted-20261108T093922Z",
+        "duration_s": 25.03,
+        "sample_count": 295,
+        "unique_fresh_frames_observed": 277,
+        "saved_images": 48,
+        "last_frame_age_ms": 106,
+        "per_marker": {
+          "10": {
+            "detected_frames": 221,
+            "pose_frames": 197,
+            "mean_reprojection_px": 0.8004700162916014,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly",
+              "Marker pose fit is poor"
+            ]
+          },
+          "20": {
+            "detected_frames": 250,
+            "pose_frames": 99,
+            "mean_reprojection_px": 0.35830802477971474,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly"
+            ]
+          },
+          "30": {
+            "detected_frames": 0,
+            "pose_frames": 0,
+            "mean_reprojection_px": null,
+            "reasons": []
+          },
+          "board": {
+            "detected_frames": 255,
+            "pose_frames": 254,
+            "mean_reprojection_px": 0.2922723438796096,
+            "reasons": [
+              "Marker pose fit is poor"
+            ]
+          }
+        },
+        "all_three_2d_frames": 198,
+        "all_three_3d_frames": 71,
+        "fresh_relative_pose_samples": 78,
+        "robot_states": [
+          "disconnected"
+        ]
+      },
+      "analysis": {
+        "forwarded_camera_fps_estimate": 12.201073694485114,
+        "fresh_frame_age_p95_ms": 106.5,
+        "all_three_2d_fraction": 0.7148014440433214,
+        "all_three_3d_fraction": 0.2563176895306859,
+        "fresh_relative_pose_fraction": 0.26440677966101694,
+        "tracking_reasons": {
+          "Start tracking": 4,
+          "Your sword not fully visible; Fixed reference not fully visible": 17,
+          "Your sword not fully visible; Fixed reference: Marker pose fit is poor": 1,
+          "Your sword not fully visible": 39,
+          "Tracking": 78,
+          "Tracking paused; the last pose is stale": 125,
+          "Your sword: Marker orientation ambiguous; tilt it slightly": 22,
+          "Fixed reference not fully visible": 5,
+          "Your sword: Marker orientation ambiguous; tilt it slightly; Fixed reference not fully visible": 2,
+          "Your sword: Marker pose fit is poor": 2
+        },
+        "orientation_sources": {
+          "image": 296
+        }
+      }
+    },
+    {
+      "session": "mounted-20261108T094744Z",
+      "interpretation": "After timestamp and temporal-selection changes, asynchronous JPEG encoding stalled. One fresh frame observed; this does not assess marker accuracy.",
+      "summary": {
+        "directory": "work/sword-qa/mounted-20261108T094744Z",
+        "duration_s": 25.02,
+        "sample_count": 292,
+        "unique_fresh_frames_observed": 1,
+        "saved_images": 1,
+        "last_frame_age_ms": 7088,
+        "per_marker": {
+          "10": {
+            "detected_frames": 1,
+            "pose_frames": 1,
+            "mean_reprojection_px": 0.6622991561889648,
+            "reasons": []
+          },
+          "20": {
+            "detected_frames": 1,
+            "pose_frames": 0,
+            "mean_reprojection_px": null,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly"
+            ]
+          },
+          "30": {
+            "detected_frames": 0,
+            "pose_frames": 0,
+            "mean_reprojection_px": null,
+            "reasons": []
+          },
+          "board": {
+            "detected_frames": 0,
+            "pose_frames": 0,
+            "mean_reprojection_px": null,
+            "reasons": []
+          }
+        },
+        "all_three_2d_frames": 0,
+        "all_three_3d_frames": 0,
+        "fresh_relative_pose_samples": 0,
+        "robot_states": [
+          "disconnected"
+        ]
+      },
+      "analysis": {
+        "forwarded_camera_fps_estimate": null,
+        "fresh_frame_age_p95_ms": 125.0,
+        "all_three_2d_fraction": 0.0,
+        "all_three_3d_fraction": 0.0,
+        "fresh_relative_pose_fraction": 0.0,
+        "tracking_reasons": {
+          "Capture or network late; waiting for a fresh frame": 275,
+          "Invalid capture age": 8,
+          "Fixed reference not fully visible": 9
+        },
+        "orientation_sources": {
+          "image": 1
+        }
+      }
+    },
+    {
+      "session": "mounted-20261108T094950Z",
+      "interpretation": "After direct JPEG encoding, fresh frame transport recovered to about14.4 fps. Camera faced a close-up white surface, with the board and robot marker outside view; no mounted tracking claim.",
+      "summary": {
+        "directory": "work/sword-qa/mounted-20261108T094950Z",
+        "duration_s": 25.05,
+        "sample_count": 295,
+        "unique_fresh_frames_observed": 292,
+        "saved_images": 49,
+        "last_frame_age_ms": 71,
+        "per_marker": {
+          "10": {
+            "detected_frames": 1,
+            "pose_frames": 1,
+            "mean_reprojection_px": 1.798525094985962,
+            "reasons": []
+          },
+          "20": {
+            "detected_frames": 0,
+            "pose_frames": 0,
+            "mean_reprojection_px": null,
+            "reasons": []
+          },
+          "30": {
+            "detected_frames": 0,
+            "pose_frames": 0,
+            "mean_reprojection_px": null,
+            "reasons": []
+          },
+          "board": {
+            "detected_frames": 0,
+            "pose_frames": 0,
+            "mean_reprojection_px": null,
+            "reasons": []
+          }
+        },
+        "all_three_2d_frames": 0,
+        "all_three_3d_frames": 0,
+        "fresh_relative_pose_samples": 0,
+        "robot_states": [
+          "disconnected"
+        ]
+      },
+      "analysis": {
+        "forwarded_camera_fps_estimate": 14.389354282736784,
+        "fresh_frame_age_p95_ms": 87.0,
+        "all_three_2d_fraction": 0.0,
+        "all_three_3d_fraction": 0.0,
+        "fresh_relative_pose_fraction": 0.0,
+        "tracking_reasons": {
+          "Your sword not fully visible; Fixed reference not fully visible": 294,
+          "Fixed reference not fully visible": 1
+        },
+        "orientation_sources": {
+          "image": 1
+        }
+      }
+    },
+    {
+      "session": "mounted-20261108T095208Z",
+      "interpretation": "Both swords and fixed board seen together. All three readable in91/269 sampled fresh frames; all accepted3D in72/269. Board accepted134/134 detections. Head turns, camera occlusion, small-marker pose rejection and duplicate detections interrupt tracking. The projected blade lines visibly miss physical tips; not calibrated for accurate physical following.",
+      "summary": {
+        "directory": "work/sword-qa/mounted-20261108T095208Z",
+        "duration_s": 25.08,
+        "sample_count": 296,
+        "unique_fresh_frames_observed": 269,
+        "saved_images": 48,
+        "last_frame_age_ms": 618,
+        "per_marker": {
+          "10": {
+            "detected_frames": 138,
+            "pose_frames": 116,
+            "mean_reprojection_px": 1.169854188273693,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly",
+              "Marker pose fit is poor"
+            ]
+          },
+          "20": {
+            "detected_frames": 217,
+            "pose_frames": 207,
+            "mean_reprojection_px": 1.0894391466166087,
+            "reasons": [
+              "Marker orientation ambiguous; tilt it slightly",
+              "Marker pose fit is poor"
+            ]
+          },
+          "30": {
+            "detected_frames": 0,
+            "pose_frames": 0,
+            "mean_reprojection_px": null,
+            "reasons": []
+          },
+          "board": {
+            "detected_frames": 134,
+            "pose_frames": 134,
+            "mean_reprojection_px": 0.7113391752563306,
+            "reasons": []
+          }
+        },
+        "all_three_2d_frames": 91,
+        "all_three_3d_frames": 72,
+        "fresh_relative_pose_samples": 75,
+        "robot_states": [
+          "disconnected"
+        ]
+      },
+      "analysis": {
+        "forwarded_camera_fps_estimate": 11.856741229678525,
+        "fresh_frame_age_p95_ms": 111.69999999999999,
+        "all_three_2d_fraction": 0.3382899628252788,
+        "all_three_3d_fraction": 0.26765799256505574,
+        "all_three_3d_given_2d_fraction": 0.7912087912087912,
+        "fresh_relative_pose_fraction": 0.2533783783783784,
+        "tracking_reasons": {
+          "Tracking": 75,
+          "Your sword not fully visible": 38,
+          "Your sword not fully visible; Fixed reference not fully visible": 102,
+          "Your sword: Marker orientation ambiguous; tilt it slightly; Fixed reference not fully visible": 2,
+          "Tracking paused; the last pose is stale": 12,
+          "Your sword: Marker orientation ambiguous; tilt it slightly": 10,
+          "Your sword: Marker pose fit is poor": 5,
+          "Fixed reference not fully visible": 33,
+          "Your sword: Marker pose fit is poor; Fixed reference not fully visible": 5,
+          "Duplicate marker ID visible; use one copy of each ID": 14
+        },
+        "orientation_sources": {
+          "10": {
+            "image": 113,
+            "recent_pose_and_image": 3
+          },
+          "20": {
+            "image": 207
+          }
+        },
+        "robot_relative_to_board": {
+          "assumption": "Robot and board fixed; consistency only, not accuracy",
+          "samples": 117,
+          "position_deviation_p95_mm": 27.682576346322016,
+          "rotation_deviation_p95_deg": 7.502224657514592
+        }
+      }
+    }
+  ],
+  "updated_utc": "2026-11-08T10:17:43.761468+00:00",
+  "neutral_response": {
+    "capture": "three recent valid poses within one second; current pose must be fresh",
+    "resettle_after_detection_gap": false,
+    "position_gain": 0.5,
+    "rotation_gain": 1.0,
+    "position_deadband_mm": 8,
+    "angle_deadband_deg": 2,
+    "freshness_timeout_ms": 150,
+    "height_constraint": "0.5 mm measured feedback tolerance; targets project 2.5 mm above floor and require 2 mm clearance after IK; near-floor home must move inward.",
+    "plain_detection_blink": "Last measured pose may survive a missing detection only until its original 150 ms expiry; no timestamp renewal or extrapolation. Invalid/ambiguous input still invalidates."
+  },
+  "powered_observations": {
+    "first-live-follow-observation": {
+      "seconds": 24.951568082906306,
+      "samples": 297,
+      "joint_ranges_deg": [
+        4.144921815586166,
+        1.950514196753467,
+        2.4829103670830364,
+        1.6048827724495789,
+        6.818226093681474,
+        2.9992675456941216
+      ],
+      "states": {
+        "connected": 1,
+        "working": 3,
+        "running": 24,
+        "holding": 269
+      },
+      "reasons": {
+        "At upright guard; motion is off": 1,
+        "Start": 3,
+        "Following tracked pose": 24,
+        "Waiting for fresh tracking and a set guard": 206,
+        "Holding at reachable pose; move back into range": 59,
+        "Waiting for a fresh pose and unchanged reference after IK": 4
+      },
+      "source_reasons": {
+        "Tracking": 149,
+        "Your sword: Marker orientation ambiguous; tilt it slightly": 17,
+        "Tracking paused; the last pose is stale": 34,
+        "Fixed reference not fully visible": 17,
+        "Duplicate marker ID visible; use one copy of each ID": 24,
+        "Your sword: Marker pose fit is poor; Fixed reference not fully visible": 7,
+        "Your sword: Marker pose fit is poor": 48,
+        "Your sword not fully visible": 1
+      },
+      "final": {
+        "state": "holding",
+        "reason": "Waiting for fresh tracking and a set guard",
+        "joints": [
+          -3.963866987644696,
+          53.97627001041569,
+          -107.81037646344673,
+          -0.5745849681722683,
+          -27.38463090162167,
+          1.927990794191703
+        ],
+        "guard_deg": [
+          -1.0,
+          52.1,
+          -106.7,
+          0.0,
+          -20.7,
+          0.1
+        ],
+        "speed_caps": [
+          82.0,
+          24.0,
+          32.0,
+          44.0,
+          36.0,
+          44.0
+        ],
+        "firmware": "6,6,XI1304,AC1303,v2.2.2",
+        "hardware_verified": false,
+        "home_checks": [
+          {
+            "type": 1,
+            "code": 0,
+            "result": 0
+          },
+          {
+            "type": 2,
+            "code": 0,
+            "result": 0
+          }
+        ],
+        "target": [
+          -3.963866987644696,
+          53.97627001041569,
+          -107.81037646344673,
+          -0.5745849681722683,
+          -27.38441233556823,
+          1.927990794191703
+        ],
+        "command": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "source_age_ms": 133,
+        "projection_fraction": 0.0,
+        "feedback_age_ms": 4
+      }
+    },
+    "gentler-live-follow-observation": {
+      "seconds": 4.186319959000684,
+      "samples": 51,
+      "joint_ranges_deg": [
+        7.5406861514884,
+        1.9692972169710004,
+        2.477637461043784,
+        3.7864379896365117,
+        4.558118204871544,
+        4.013964637618168
+      ],
+      "states": {
+        "connected": 1,
+        "working": 3,
+        "holding": 16,
+        "running": 30,
+        "fault": 1
+      },
+      "reasons": {
+        "At upright guard; motion is off": 1,
+        "Start": 3,
+        "Waiting for fresh tracking and a set guard": 15,
+        "Following tracked pose": 30,
+        "Holding at reachable pose; move back into range": 1,
+        "Controller state 1, mode 4, faults [0, 14]": 1
+      },
+      "source_reasons": {
+        "Tracking": 41,
+        "Tracking paused; the last pose is stale": 5,
+        "Your sword: Marker pose fit is poor": 2,
+        "Your sword not fully visible": 2,
+        "Your sword: Marker orientation ambiguous; tilt it slightly": 1
+      },
+      "final": {
+        "state": "fault",
+        "reason": "Controller state 1, mode 4, faults [0, 14]",
+        "joints": [
+          5.546447858432861,
+          51.545873552766295,
+          -106.62418434047979,
+          -3.531335440056707,
+          -17.22040953921955,
+          2.5436644728634756
+        ],
+        "guard_deg": [
+          -1.0,
+          52.1,
+          -106.7,
+          0.0,
+          -20.7,
+          0.1
+        ],
+        "speed_caps": [
+          82.0,
+          24.0,
+          32.0,
+          44.0,
+          36.0,
+          44.0
+        ],
+        "firmware": "6,6,XI1304,AC1303,v2.2.2",
+        "hardware_verified": false,
+        "home_checks": [
+          {
+            "type": 1,
+            "code": 0,
+            "result": 0
+          },
+          {
+            "type": 2,
+            "code": 0,
+            "result": 0
+          }
+        ],
+        "target": [
+          -8.518033074307745,
+          66.85099559587673,
+          -139.39999999999998,
+          -30.486781586783696,
+          3.8663156645976353,
+          34.057867447149405
+        ],
+        "command": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "source_age_ms": 138,
+        "projection_fraction": 1.0,
+        "cartesian_projected": false,
+        "feedback_age_ms": 25
+      }
+    },
+    "final-gentler-live-observation": {
+      "start_requested": true,
+      "attempts": [
+        {
+          "guard": {
+            "message": "Guard set"
+          }
+        },
+        {
+          "start": {
+            "message": "Start requested"
+          }
+        }
+      ],
+      "observation_duration_s": 25.045,
+      "samples": 297,
+      "session_timer_s": null,
+      "final_robot_state": {
+        "state": "holding",
+        "reason": "Waiting for fresh tracking and a set guard",
+        "joints": [
+          3.429382273532984,
+          48.17889423536808,
+          -105.54356645151374,
+          2.548608462605507,
+          -19.201026087192552,
+          0.5712890817326198
+        ],
+        "planner_warning": null,
+        "guard_deg": [
+          -1.0,
+          52.1,
+          -106.7,
+          0.0,
+          -20.7,
+          0.1
+        ],
+        "speed_caps": [
+          82.0,
+          24.0,
+          32.0,
+          44.0,
+          36.0,
+          44.0
+        ],
+        "firmware": "6,6,XI1304,AC1303,v2.2.2",
+        "hardware_verified": false,
+        "home_checks": [
+          {
+            "type": 1,
+            "code": 0,
+            "result": 0
+          },
+          {
+            "type": 2,
+            "code": 0,
+            "result": 0
+          }
+        ],
+        "command": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "target": [
+          -10.097019131158367,
+          49.48493227260665,
+          -114.85299134683605,
+          -42.7,
+          -2.2216810310960233,
+          42.800000000000004
+        ],
+        "source_age_ms": 132,
+        "projection_fraction": 1.0,
+        "cartesian_projected": false,
+        "feedback_age_ms": 9
+      },
+      "final_tracking": {
+        "kind": "markers",
+        "fresh": false,
+        "reason": "Fixed reference not fully visible",
+        "age_ms": null,
+        "guard_set": true,
+        "frames": 440,
+        "position_m": null
+      },
+      "encoder_range_deg": [
+        10.931,
+        4.26,
+        4.261,
+        5.668,
+        4.417,
+        4.794
+      ],
+      "state_counts": {
+        "connected": 1,
+        "working": 3,
+        "holding": 253,
+        "running": 40
+      },
+      "reason_counts": {
+        "At upright guard; motion is off": 1,
+        "Start": 3,
+        "Waiting for fresh tracking and a set guard": 252,
+        "Following tracked pose": 40,
+        "Holding at reachable pose; move back into range": 1
+      },
+      "expected_planner_warning_samples": 0
+    }
+  },
+  "homing_fix": {
+    "confirmed_physical_return": true,
+    "native_outward_check_result": 0,
+    "native_return_check_result": 0,
+    "changes": [
+      "Wait for confirmed idle and stable encoders",
+      "Use controller commanded-position reference for relative deltas",
+      "Restore check-only intermediate state with type2 return check"
+    ],
+    "faults_bypassed": false
+  },
+  "ik_warning_handling": {
+    "native_no_solution_code": 10,
+    "warning": 14,
+    "handling": "Discard rejected candidate; accept warning14 only when attributed to our unsuccessful IK query; continue reachable fallback. Unknown warnings and all errors remain fatal.",
+    "one_time_diagnostic_warning_restoration": "Only warning14 cleared while controller was in STOP4, no errors, empty queue and stationary encoders. Recorded in work/sword-qa/restore-no-solution-warning.json. No enable, motion, or limit changes.",
+    "hardware_recheck": "Following ran for 25 seconds with no controller warning sampled; all six encoders moved. Warning14 was not induced, so its fallback remains software-tested rather than directly exercised by this run."
+  },
+  "height_recovery": {
+    "diagnostic": {
+      "faults": [
+        0,
+        0
+      ],
+      "state": 4,
+      "queue": 0,
+      "joints": [
+        -6.937756538590812,
+        48.25107567451677,
+        -101.89544630259404,
+        -0.7899169804015281,
+        -14.263989477736208,
+        7.17165508605743
+      ],
+      "pose": [
+        681.693359375,
+        -81.75160217285156,
+        310.572021484375,
+        -165.37131075029814,
+        -67.13158659717001,
+        -22.389636721963182
+      ],
+      "model_points_mm": [
+        [
+          681.693359375,
+          -81.75160217285156,
+          310.572021484375
+        ],
+        [
+          832.2020669752928,
+          -104.29833316056963,
+          316.7988873298091
+        ],
+        [
+          973.6320278861585,
+          -170.1803440027419,
+          706.7439178201885
+        ]
+      ],
+      "model_floor_mm": 310.7,
+      "min_clearance_mm": -0.12797851562498863,
+      "native_workspace": [
+        0,
+        [
+          3000,
+          -3000,
+          3000,
+          -3000,
+          9999,
+          100
+        ],
+        1000.0,
+        180.0,
+        [
+          -360.0,
+          360.0,
+          -117.97,
+          120.0,
+          -225.0,
+          11.0,
+          -360.0,
+          360.0,
+          -97.0,
+          180.0,
+          -360.0,
+          360.0,
+          0.0,
+          0.0
+        ],
+        1,
+        1
+      ]
+    },
+    "home_result": {
+      "state": "connected",
+      "reason": "At upright guard; motion is off",
+      "joints": [
+        -1.005139175995539,
+        52.09749670560945,
+        -106.69801185521845,
+        0.0008789062953018777,
+        -20.70197723277578,
+        0.10184326317708746
+      ],
+      "planner_warning": null,
+      "guard_deg": [
+        -1.0,
+        52.1,
+        -106.7,
+        0.0,
+        -20.7,
+        0.1
+      ],
+      "speed_caps": [
+        82.0,
+        24.0,
+        32.0,
+        44.0,
+        36.0,
+        44.0
+      ],
+      "firmware": "6,6,XI1304,AC1303,v2.2.2",
+      "hardware_verified": false,
+      "home_checks": [
+        {
+          "type": 1,
+          "code": 0,
+          "result": 0
+        },
+        {
+          "type": 2,
+          "code": 0,
+          "result": 0
+        }
+      ],
+      "feedback_age_ms": 99
+    },
+    "tracking_profile_observation": {
+      "start_requested": false,
+      "attempts": [],
+      "observation_duration_s": 0.001,
+      "samples": 0,
+      "final_robot": {
+        "state": "connected",
+        "reason": "At upright guard; motion is off",
+        "joints": [
+          -1.0000854763399643,
+          52.09980530954892,
+          -106.70020434594204,
+          0.0,
+          -20.700329449638513,
+          0.09953613333118426
+        ],
+        "planner_warning": null,
+        "guard_deg": [
+          -1.0,
+          52.1,
+          -106.7,
+          0.0,
+          -20.7,
+          0.1
+        ],
+        "speed_caps": [
+          82.0,
+          24.0,
+          32.0,
+          44.0,
+          36.0,
+          44.0
+        ],
+        "firmware": "6,6,XI1304,AC1303,v2.2.2",
+        "hardware_verified": false,
+        "home_checks": [
+          {
+            "type": 1,
+            "code": 0,
+            "result": 0
+          },
+          {
+            "type": 2,
+            "code": 0,
+            "result": 0
+          }
+        ],
+        "feedback_age_ms": 97
+      },
+      "final_tracking": {
+        "kind": "markers",
+        "fresh": false,
+        "reason": "Your sword not fully visible; Fixed reference not fully visible",
+        "age_ms": null,
+        "guard_set": false,
+        "frames": 0,
+        "position_m": null
+      },
+      "session_timer_s": null
+    },
+    "preserves_native_faults": true,
+    "restored_original_response_gains": true
+  }
+}

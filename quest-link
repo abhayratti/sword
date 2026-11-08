@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+quest_adb="${ADB:-adb}"
+if [ "$#" -gt 0 ]; then
+    quest_serial="$1"
+else
+    quest_serial="$("$quest_adb" devices | awk 'NR>1 && $2=="device" {print $1}')"
+    quest_count="$(printf '%s\n' "$quest_serial" | awk 'NF {n++} END {print n+0}')"
+    if [ "$quest_count" != 1 ]; then
+        printf '%s\n' 'Connect and authorize one Quest, or pass its adb serial as the first argument.'
+        exit 1
+    fi
+fi
+"$quest_adb" -s "$quest_serial" reverse tcp:8765 tcp:8765
+printf '%s\n' 'Quest linked. Open http://localhost:8765 in Quest Browser.'

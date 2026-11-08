@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+export OPENCV_OPENCL_RUNTIME=disabled
+cd "$(dirname "$0")"
+if [ ! -x .venv/bin/python ]; then
+    sword_python="${PYTHON:-python3}"
+    "$sword_python" -c 'import sys; sys.exit(0 if (3,11) <= sys.version_info[:2] < (3,14) else "Python 3.11–3.13 required; set PYTHON to its executable.")'
+    "$sword_python" -m venv .venv
+fi
+if ! .venv/bin/python -c 'import aiohttp, cv2, numpy, xarm' >/dev/null 2>&1; then
+    .venv/bin/python -m pip install -r requirements.txt
+fi
+exec .venv/bin/python -m sword_app "$@"
