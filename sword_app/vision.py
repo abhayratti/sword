@@ -20,6 +20,7 @@ class Vision:
         self.camera_key = self.size = self.calibration = None
         self.last_image = None
         self.pose_history = {}
+        self.last_anchor = None  # last measured board pose, reused while the board is out of view
         nx, ny = config['checkerboard_inner']
         self.board_flat = np.zeros((nx*ny, 3), np.float32)
         self.board_flat[:, :2] = np.mgrid[0:nx, 0:ny].T.reshape(-1, 2) * config['checkerboard_square_m']
@@ -33,14 +34,14 @@ class Vision:
     def _camera(self, key, size):
         if self.camera_key == key and self.size == size: return
         self.camera_key, self.size = key, size
-        self.views, self.calibration, self.pose_history = [], None, {}
+        self.views, self.calibration, self.pose_history, self.last_anchor = [], None, {}, None
         p = self.storage / 'camera.json'
         if p.exists():
             value = json.loads(p.read_text())
             if value.get('camera_key') == key and value.get('size') == list(size): self.calibration = value
 
     def reset(self):
-        self.views, self.calibration = [], None
+        self.views, self.calibration, self.last_anchor = [], None, None
         (self.storage / 'camera.json').unlink(missing_ok=True)
         return self.status()
 
@@ -63,6 +64,7 @@ class Vision:
         if len(self.views) < self.cfg['minimum_calibration_views']:
             raise ValueError(f"Capture at least {self.cfg['minimum_calibration_views']} board views")
         rms, k, d, _, _ = cv2.calibrateCamera([self.board_flat]*len(self.views), self.views, self.size, None, None)
+        self.last_anchor = None
         self.calibration = {'camera_key': self.camera_key, 'size': list(self.size), 'matrix': k.tolist(),
                             'distortion': d.tolist(), 'rms_px': float(rms), 'validation_px': [float(rms)]}
         self.storage.mkdir(parents=True, exist_ok=True)
@@ -117,12 +119,16 @@ class Vision:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         self.last_image = gray
         objects, poses = [], {}
+        anchor, reference = None, None
         if self.calibration is not None:
             board, anchor = self._board(gray)
             if board: objects.append(board)
-            if anchor: poses['anchor'] = anchor
-        else:
-            anchor = None
+            if anchor is not None: self.last_anchor, reference = anchor, 'live'
+            elif self.last_anchor is not None:
+                # Board out of view: keep using its last pose. Accurate while the camera
+                # stays put; headset movement during the gap shows up as sword movement.
+                anchor, reference = self.last_anchor, 'remembered'
+            if anchor is not None: poses['anchor'] = anchor
         corners, ids, _ = self.detector.detectMarkers(gray)
         names = {self.cfg['human_id']: 'human', self.cfg['robot_id']: 'robot'}; seen = set()
         for raw_id, raw_corners in zip([] if ids is None else ids.flatten(), corners):
@@ -152,4 +158,4 @@ class Vision:
         if 'anchor' in poses and 'human' in poses:
             a, h = poses['anchor'], poses['human']
             source = {'p': a['r'].T @ (h['p'] - a['p']), 'r': a['r'].T @ h['r'], 'kind': 'markers'}
-        return {'objects': objects, 'camera': self.status(), 'width': width, 'height': height}, source
+        return {'objects': objects, 'camera': self.status(), 'reference': reference, 'width': width, 'height': height}, source

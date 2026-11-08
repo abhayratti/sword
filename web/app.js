@@ -66,7 +66,7 @@ function update(s){
   $('calibration-detail').textContent=cam.calibrated?`${cam.method==='factory_intrinsics_checked'?'Factory lens':`Fit ${cam.rms_px.toFixed(2)} px`} · validation ${Math.max(...cam.validation_px).toFixed(2)} px`:'Use the second page of the print kit; squares must measure 25 mm.';
   $('calibrate').disabled=(cam.views||0)<12;
   for(const [name,id] of [['human','human-state'],['robot','robot-marker-state'],['anchor','anchor-state']]){
-    const object=s.vision.objects?.find(x=>x.name===name);$(id).textContent=s.frame_age_ms>500?'stale':object?.pose?'3D':object?'2D':'—';
+    const object=s.vision.objects?.find(x=>x.name===name);$(id).textContent=s.frame_age_ms>500?'stale':object?.pose?'3D':name==='anchor'&&s.vision.reference==='remembered'?'held':object?'2D':'—';
   }
   if(s.frame_age_ms!==null&&s.frame_age_ms<500)drawFrame(s.vision);
   else if(renderedFrame!==null){ctx.clearRect(0,0,canvas.width,canvas.height);renderedFrame=null;$('empty').hidden=false;}

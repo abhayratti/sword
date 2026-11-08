@@ -134,8 +134,11 @@ class Robot:
         self._check(self.arm.vc_set_joint_velocity([*self.velocity, 0.], is_radian=False, is_sync=False,
                                                    duration=self.cfg['velocity_lease_s']), 'Velocity')
         self._record('sample', actual_deg=q.tolist(), target_deg=target.tolist(), command_deg_s=self.velocity.tolist())
-        tracking = source is not None
-        self._publish('running' if tracking else 'holding', 'Following tracked pose' if tracking else 'Waiting for tracking',
+        if source is None: reason = 'Waiting for tracking and a set guard'
+        elif source['age'] <= .15: reason = 'Following tracked pose'
+        elif source['age'] <= self.cfg['prediction_s']: reason = 'Marker lost; continuing on recent motion'
+        else: reason = 'Marker lost; holding last pose until it returns'
+        self._publish('running' if source is not None else 'holding', reason,
                       joints=q.tolist(), target=target.tolist(), command=self.velocity.tolist(), feedback_at=now)
 
     def _run(self):

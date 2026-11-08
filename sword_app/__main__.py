@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def create_app(root=ROOT):
     config = tomllib.loads((root/'config.toml').read_text())
-    state = State(config['robot']['tracking_timeout_s'])
+    state = State(config['robot']['tracking_timeout_s'], config['robot']['prediction_s'])
     robot = Robot(state, config['robot'], root/'var')
     vision = Vision(config['vision'], root/'var')
     key = secrets.token_urlsafe(32)

@@ -55,6 +55,16 @@ class Core(unittest.TestCase):
         state.update(pose, 'a'); state.set_guard(); self.assertIsNotNone(state.neutral)
         state.update(pose, 'b'); self.assertIsNone(state.neutral)
 
+    def test_lost_marker_continues_on_recent_motion_then_holds(self):
+        state = State(.5, .3)
+        for i in range(5): state.update({'p': [.1*i/30, 0, 0], 'r': np.eye(3), 'kind': 'hand'}, 'a', 10+i/30)
+        state.neutral = {'p': np.zeros(3), 'r': np.eye(3), 'basis': np.eye(3)}
+        last = 10+4/30
+        moving, _ = state.target_source(last+.2); held, _ = state.target_source(last+5)
+        self.assertGreater(moving['p'][0], .4/30)  # still moving at ~0.1 m/s after the marker vanished
+        np.testing.assert_allclose(held['p'][0], .4/30+.1*.3, atol=.003)  # stops after prediction_s
+        self.assertIsNone(state.current(last+5))  # not live, but the robot still has a target
+
     def test_robot_follows_tracking_and_stops(self):
         state = State(.5); state.update({'p': [0, 0, 0], 'r': np.eye(3), 'kind': 'hand'}, 'a'); state.set_guard()
         with tempfile.TemporaryDirectory() as tmp:

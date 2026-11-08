@@ -22,7 +22,7 @@ Controller and hand-wrist tracking are available as alternatives to markers.
 
 ## Robot behavior
 
-All motion settings are in `config.toml`. Each control tick reads the joints, solves native IK for the mirrored pose, and sends a joint velocity toward that solution, capped by `max_speed_deg_s` and `max_accel_deg_s2`. IK targets are clamped to the controller's joint ranges. If tracking drops, the robot keeps moving to the last target and resumes when tracking returns (a pose is used for `tracking_timeout_s`). If IK has no solution, the last reachable target is kept.
+All motion settings are in `config.toml`. Each control tick reads the joints, solves native IK for the mirrored pose, and sends a joint velocity toward that solution, capped by `max_speed_deg_s` and `max_accel_deg_s2`. IK targets are clamped to the controller's joint ranges. If your marker leaves the frame, the robot continues along its recent motion for `prediction_s`, then holds that pose; it resumes as soon as the marker returns. The session never ends because of tracking loss. If the reference board leaves the frame, its last measured pose is reused, which is accurate as long as the camera does not move. If IK has no solution, the last reachable target is kept.
 
 Each velocity command expires after `velocity_lease_s` on the controller, so the arm stops if the app dies. Controller errors end the session; warnings are ignored. **Home** and **Start** clear warnings and errors and enable the motors.
 
