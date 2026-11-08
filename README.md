@@ -56,7 +56,7 @@ Leaving passthrough stops the robot. The laptop's Stop button and space bar also
 
 ## Attacks
 
-On a random timer (, 5–15 s), the robot attacks with a burst of 1–3 strikes () chosen from : chop, slice right and slice left. Each strike moves to its wind-up and swings straight through to its strike pose, starting the swing  before the wind-up is reached. Then it goes back to blocking. The headset panel shows INCOMING and the strike name. Set  under  for blocking only. Strike end poses decide exactly where the blade goes: keep them at blade height, not at the person.
+On a random timer (`interval_s`, 5–15 s), the robot attacks with a burst of 1–3 strikes (`combo`) chosen from `[attacks.moves]`: chop, slice right and slice left. Each strike moves to its wind-up and swings straight through to its strike pose, starting the swing `blend_deg` before the wind-up is reached. Then it goes back to blocking. The headset panel shows INCOMING and the strike name. Set `enabled = false` under `[attacks]` for blocking only. Strike end poses decide exactly where the blade goes: keep them at blade height, not at the person.
 
 Joint moves are capped by the SDK at 180°/s and 1146°/s² (the xArm 6 maximums). Keep every pose at least 5° inside the joint limits; fast re-planning overshoots by about 2°.
 
