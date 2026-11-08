@@ -31,16 +31,38 @@ Blocks: guard, high, high left, high right, mid left, mid right. Their joint ang
 
 ## How blocking works
 
-The blade tip's position relative to your guard picks a zone on a 3×3 grid (left/centre/right × high/mid/low). The centre and the whole low row map to guard. The Mac shows the grid live, so you can check it before the robot moves.
+**Zone calibration (recommended):** after setting your guard, click the right thumbstick. The headset panel walks through each block (guard, high, high left, high right, mid left, mid right): show your wind-up for it and press A. The tip positions are saved in `var/zones.json` relative to your guard, so re-centring with A keeps them. While blocking, the robot picks the recorded zone nearest your tip.
+
+Without zone calibration, a fixed 3×3 grid around your guard is used (left/centre/right × high/mid/low); low on a side uses that side's mid block, and low centre is guard. The Mac shows the grid live, so you can check it before the robot moves.
 
 - **Look-ahead**: the zone is chosen from where the tip will be `lookahead_s` ahead, to hide system delay.
-- **Hysteresis and dwell**: zone edges overlap by `hysteresis_m`, and the tip must stay in a new zone for `dwell_s` before the robot switches.
+- **Hysteresis and dwell**: the robot switches only when another zone is closer by `hysteresis_m` (or, on the grid, past the edge by that much), and the tip must stay in a new zone for `dwell_s` before the robot switches.
 - **Strike lock**: above `strike_speed_m_s`, the robot commits to the block for where the strike started and holds it until the tip has been slower for `release_s`.
 - **Guard**: when your sword is near your guard, or the controller isn't tracked for `tracking_timeout_s`, the robot returns to guard.
 
+## Headset controls
+
+Open the app in Quest Browser on the headset and tap **Enter**. A status panel in passthrough shows the next step.
+
+| Button | Action |
+|---|---|
+| Right **B** | Calibrate the blade (point the sword straight up first) |
+| Right **A** | Set or re-centre your guard; during zone calibration, record the shown zone |
+| Right thumbstick click | Start zone calibration |
+| Left **X** | Start blocking |
+| Left **Y** | Stop |
+
+Leaving passthrough stops the robot. The laptop's Stop button and space bar also stop it.
+
+## Attacks
+
+On a random timer (, 5–15 s), the robot attacks with a burst of 1–3 strikes () chosen from : chop, slice right and slice left. Each strike moves to its wind-up and swings straight through to its strike pose, starting the swing  before the wind-up is reached. Then it goes back to blocking. The headset panel shows INCOMING and the strike name. Set  under  for blocking only. Strike end poses decide exactly where the blade goes: keep them at blade height, not at the person.
+
+Joint moves are capped by the SDK at 180°/s and 1146°/s² (the xArm 6 maximums). Keep every pose at least 5° inside the joint limits; fast re-planning overshoots by about 2°.
+
 ## Robot behaviour
 
-The robot follows the chosen block with coordinated joint-velocity control, capped by `max_speed_deg_s` and `max_accel_deg_s2`. Each velocity command expires after `velocity_lease_s` on the controller, so the arm stops if the app dies. On connect, the app sets the foam sword payload and `collision_sensitivity` (runtime only, not saved to the controller). A collision error (C31) is cleared automatically and the robot returns to guard and keeps blocking (`collision_auto_home`). Any other controller error ends the session; Home, Move here and Start clear errors and enable the motors.
+When the chosen block changes, its joint pose is sent once to the controller in online trajectory mode (mode 6). The controller plans the move at `block_speed_deg_s` / `block_accel_deg_s2`, re-plans smoothly if the block changes mid-move, and stops exactly on the taught pose. Before each move the app sets the foam sword payload and `collision_sensitivity` (runtime only, not saved to the controller). A collision error (C31) is cleared automatically and the robot returns to guard and keeps blocking (`collision_auto_home`). Any other controller error ends the session; Home, Move here and Start clear errors and enable the motors.
 
 There is no app-side workspace or collision checking beyond the taught poses. Use foam swords, teach blocks that meet strikes in front of the robot rather than reaching toward you, and configure any extra boundaries in xArm Studio.
 

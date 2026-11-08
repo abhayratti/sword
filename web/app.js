@@ -1,10 +1,12 @@
 import {Tracker} from './tracking.js';
 const $=id=>document.getElementById(id);let key=null;
+// The headset gets a single Enter button; the laptop gets the full control panel.
+if(/OculusBrowser|Quest/i.test(navigator.userAgent))document.body.classList.add('headset');
 const canvas=$('scene'),ctx=canvas.getContext('2d');
 const LABELS={guard:'Guard',high:'High',high_left:'High left',high_right:'High right',mid_left:'Mid left',mid_right:'Mid right'};
 // Grid cell for each block, as [row, column] seen from behind the robot (robot's left on the left).
 const CELLS={high_left:[0,0],high:[0,1],high_right:[0,2],mid_left:[1,0],guard:[1,1],mid_right:[1,2]};
-const tracker=new Tracker(text=>{$('device-message').textContent=text;},()=>{action('stop').catch(()=>{});$('track').firstChild.textContent='Start tracking on this headset ';});
+const tracker=new Tracker(text=>{$('device-message').textContent=text;},()=>{action('stop').catch(()=>{});});
 for(let i=1;i<=6;i++){const node=document.createElement('div');node.className='joint';node.innerHTML=`<label>J${i}</label><strong>—</strong><em>No feedback</em>`;$('joints').append(node);}
 function notice(text){$('notice').textContent=text;$('notice').hidden=!text;}
 async function action(name,value){
@@ -14,14 +16,13 @@ async function action(name,value){
   return data;
 }
 async function perform(name,value){try{notice((await action(name,value)).message);}catch(e){notice(e.message);}}
-for(const [id,name] of [['stop','stop'],['connect','connect'],['home','home'],['start','start'],['guard','guard'],['blade','blade_up']])$(id).addEventListener('click',()=>perform(name));
+for(const [id,name] of [['stop','stop'],['connect','connect'],['home','home'],['start','start'],['guard','guard'],['blade','blade_up'],['zones','calibrate_zones']])$(id).addEventListener('click',()=>perform(name));
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat){e.preventDefault();perform('stop');}});
 $('track').addEventListener('click',async()=>{
   try{
     if(tracker.running){await tracker.stop();notice('Tracking stopped.');return;}
     if(!key)throw new Error('Wait for the Mac connection');
     $('track').disabled=true;await tracker.start(key);
-    $('track').firstChild.textContent='Stop tracking on this headset ';
   }catch(e){notice(e.message||'Tracking could not start');}finally{$('track').disabled=false;}
 });
 let freedrive=false;
@@ -42,12 +43,22 @@ function draw(s){
   const X=x=>w/2-x*scale,Y=y=>h/2-y*scale;  // offset x is toward the robot's left: draw it on the left
   ctx.fillStyle='#10251f';ctx.fillRect(0,0,w,h);
   const xs=[0,X(z.side_m),X(-z.side_m),w],ys=[0,Y(z.height_m),Y(-z.height_m),h];
-  const cell=CELLS[t.zone];
-  for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+  const points=Object.entries(s.tracking.zones||{});
+  if(points.length){
+    // Calibrated zones: the robot picks the recorded wind-up point nearest the tip.
+    for(const [name,[x,y]] of points){
+      const active=name===t.zone;
+      ctx.fillStyle=active?'#79e2cf':'#c5ced4';ctx.beginPath();ctx.arc(X(x),Y(y),active?26:16,0,7);ctx.fill();
+      ctx.font='bold 26px system-ui';ctx.textAlign='center';ctx.fillText(LABELS[name],X(x),Y(y)-34);
+    }
+  }
+  const cell=points.length?null:CELLS[t.zone];
+  if(!points.length)for(let r=0;r<3;r++)for(let c=0;c<3;c++){
     const active=cell&&cell[0]===r&&cell[1]===c;
     ctx.fillStyle=active?(t.strike?'#c0503a':'#79e2cf55'):'transparent';ctx.fillRect(xs[c],ys[r],xs[c+1]-xs[c],ys[r+1]-ys[r]);
     ctx.strokeStyle='#c5ced455';ctx.lineWidth=2;ctx.strokeRect(xs[c],ys[r],xs[c+1]-xs[c],ys[r+1]-ys[r]);
-    const name=Object.keys(CELLS).find(n=>CELLS[n][0]===r&&CELLS[n][1]===c)||'guard';
+    // The low row has no blocks of its own: low on a side uses that side's mid block.
+    const name=r===2?['mid_left','guard','mid_right'][c]:Object.keys(CELLS).find(n=>CELLS[n][0]===r&&CELLS[n][1]===c);
     ctx.fillStyle='#c5ced4';ctx.font='bold 26px system-ui';ctx.textAlign='center';
     ctx.fillText(LABELS[name],(xs[c]+xs[c+1])/2,ys[r]+40);
   }
@@ -64,7 +75,7 @@ function update(s){
   $('teach-status').textContent=`${s.taught.length} / ${s.blocks.length} taught`;
   $('tracking-state').textContent=t.fresh?'live':'—';$('blade-state').textContent=t.blade_calibrated?'set':'—';$('guard-state').textContent=t.guard_set?'set':'—';
   $('zone-label').textContent=(s.threat.strike?'STRIKE · ':'')+(LABELS[s.threat.zone]||s.threat.zone).toUpperCase();
-  $('guard-status').textContent=!t.blade_calibrated?'Point the sword straight up and press B on the controller.':!t.guard_set?'Hold your normal guard and press A on the controller.':'Ready. Press A again any time to re-centre your guard.';
+  $('guard-status').textContent=!t.blade_calibrated?'Point the sword straight up and press B on the controller.':!t.guard_set?'Hold your normal guard and press A on the controller.':t.calibrating?`Zone calibration: show your ${LABELS[t.calibrating]} wind-up and press A (step ${t.calibration_step+1} of 6).`:Object.keys(t.zones||{}).length?'Ready. Zones calibrated. A re-centres your guard; click the right stick to recalibrate zones.':'Ready. Click the right stick (or Calibrate zones) to record your own zones.';
   const connected=!!r.firmware&&!['disconnected','working'].includes(r.state);
   freedrive=r.state==='freedrive';$('freedrive').textContent=freedrive?'Freedrive off':'Freedrive on';$('freedrive').disabled=!connected;
   for(const row of Object.values(blockRows))row.querySelectorAll('button').forEach(b=>b.disabled=!connected);

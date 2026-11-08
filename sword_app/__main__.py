@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 def create_app(root=ROOT):
     config = tomllib.loads((root/'config.toml').read_text())
     state = State({**config['tracking'], **config['blocking']}, root/'var')
-    robot = Robot(state, config['robot'], root/'var', config['blocks'])
+    robot = Robot(state, config['robot'], root/'var', config['blocks'], config.get('attacks'))
     key = secrets.token_urlsafe(32)
     owner = None
 
@@ -46,12 +46,21 @@ def create_app(root=ROOT):
     async def action(request):
         data = await request.json(); op = data.get('action')
         if op == 'stop': robot.stop(); message = 'Stop requested'
-        elif op == 'guard': message = state.set_guard()
+        elif op == 'guard': message = state.press_a()
+        elif op == 'calibrate_zones': message = state.start_zone_calibration()
         elif op == 'blade_up': message = state.set_blade_up()
         elif op in {'connect', 'home', 'start', 'disconnect', 'freedrive', 'save_block', 'goto_block'}:
             robot.request(op, data.get('value')); message = op.replace('_', ' ').capitalize() + ' requested'
         else: raise ValueError('Unknown action')
         return web.json_response({'message': message})
+
+    def hud():
+        """What the in-headset status panel needs."""
+        s = state.snapshot(); t, r = s['tracking'], s['robot']
+        return {'fresh': t['fresh'], 'blade': t['blade_calibrated'], 'guard': t['guard_set'],
+                'calibrating': t['calibrating'], 'step': t['calibration_step'], 'zones': bool(t['zones']),
+                'connected': bool(r.get('firmware')) and r.get('state') != 'disconnected',
+                'robot': r.get('state'), 'reason': r.get('reason'), 'zone': s['threat']['zone'], 'strike': s['threat']['strike']}
 
     async def tracking(request):
         nonlocal owner
@@ -72,13 +81,22 @@ def create_app(root=ROOT):
                         state.update(payload['position'], from_quaternion(payload['orientation']),
                                      payload['head_orientation'], payload['epoch'], received)
                     else: state.note(str(payload.get('reason', 'Controller not tracked')))
-                    # Controller buttons: A = set guard, B = calibrate blade (pointing straight up).
+                    # Controller buttons: right A = set guard (or record the next zone while calibrating),
+                    # right B = calibrate blade (pointing straight up), right thumbstick click = calibrate zones,
+                    # left X = start blocking, left Y = stop.
                     command = payload.get('command')
-                    if command == 'guard': message = state.set_guard()
+                    if command == 'guard': message = state.press_a()
+                    elif command == 'calibrate_zones': message = state.start_zone_calibration()
                     elif command == 'blade_up': message = state.set_blade_up()
+                    elif command == 'stop': robot.stop(); message = 'Stopped'
+                    elif command == 'start':
+                        if robot.active: message = 'Already blocking'
+                        elif robot.arm is None: raise ValueError('Connect the robot on the laptop first')
+                        elif state.neutral is None: raise ValueError('Set your guard first (A)')
+                        else: robot.request('start'); message = 'Starting'
                 except (ValueError, KeyError, TypeError) as exc:
                     error = str(exc)[:160]; state.note(error)
-                await ws.send_json({'error': error, 'message': message})
+                await ws.send_json({'error': error, 'message': message, 'hud': hud()})
         finally:
             if owner is ws: owner = None; state.note('Tracking device disconnected')
         return ws

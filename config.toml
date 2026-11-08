@@ -1,14 +1,13 @@
 [robot]
 ip = "192.168.1.206"
-max_speed_deg_s = [60.0, 60.0, 60.0, 60.0, 60.0, 60.0]
-# Lower acceleration = smoother starts and stops (0 to 60 deg/s in 0.3 s at 200).
-max_accel_deg_s2 = [200.0, 200.0, 200.0, 200.0, 200.0, 200.0]
-kp = 12.0
-# Hardware watchdog: each velocity command expires after this long if the app stops sending.
-velocity_lease_s = 0.2
-home_speed_deg_s = 30.0
+# Moves between blocks are planned by the controller (online trajectory mode): it re-plans smoothly
+# when the block changes mid-move and stops exactly on the taught pose.
+block_speed_deg_s = 180.0
+# The SDK caps every joint move at 180 deg/s and 1146 deg/s^2 (the xArm 6 maximums); higher values do nothing.
+block_accel_deg_s2 = 1146.0
+home_speed_deg_s = 60.0
 # Speed for "Move here" when checking a taught block.
-teach_speed_deg_s = 15.0
+teach_speed_deg_s = 45.0
 # Foam sword payload, so contact isn't mistaken for a crash. Centre of gravity is from the
 # flange in the tool frame (z points out of the flange) — measure and update.
 sword_weight_kg = 0.15
@@ -24,8 +23,8 @@ blade_length_m = 0.6
 # Without a new controller pose for this long, the robot returns to guard.
 tracking_timeout_s = 0.3
 # One Euro smoothing. Lower min cutoff = steadier when still; higher beta = less lag when fast.
-smoothing_min_cutoff_hz = 2.0
-smoothing_beta_position = 5.0
+smoothing_min_cutoff_hz = 3.0
+smoothing_beta_position = 8.0
 smoothing_beta_rotation = 1.0
 
 [blocking]
@@ -34,13 +33,17 @@ smoothing_beta_rotation = 1.0
 side_m = 0.15
 height_m = 0.15
 # Extra distance needed to enter or leave a zone, so the robot doesn't flicker at the edges.
-hysteresis_m = 0.03
+hysteresis_m = 0.02
 # How long the tip must stay in a new zone before the robot switches (outside strikes).
-dwell_s = 0.07
+dwell_s = 0.03
 # Pick the zone from where the tip will be this far ahead, to hide system delay.
-lookahead_s = 0.15
-# Tip speed that counts as a strike: the robot commits to the block from where it started.
-strike_speed_m_s = 1.5
+lookahead_s = 0.2
+# Strike lock: above strike_speed_m_s the robot commits to the block where the movement started and
+# ignores the tip until it slows down. Off by default: ordinary repositioning is faster than any useful
+# threshold, so it made block switching slow (median 470 ms in testing).
+strike_lock = false
+# Tip speed that counts as a strike (only used when strike_lock is on).
+strike_speed_m_s = 1.2
 # The strike lock ends after the tip has been below the strike speed this long.
 release_s = 0.25
 
@@ -48,8 +51,35 @@ release_s = 0.25
 # Joint angles (degrees, J1..J6) for each block, named from the robot's point of view.
 # Saving a block in the app's teach panel overrides it (stored in var/blocks.json; delete that file to use these).
 guard      = [0.0, 52.1, -106.7, 0.0, -20.7, 0.1]
-high       = [-39.7, 118.0, -212.2, -90.5, -46.2, 0.1]
-high_left  = [0.0, 118.0, -216.3, -129.9, 2.4, 93.6]
-high_right = [0.0, 118.0, -209.8, -43.9, 1.8, 93.6]
-mid_left   = [0.0, 118.0, -210.9, 47.4, 1.7, 29.5]
-mid_right  = [0.0, 118.0, -211.0, -43.9, 1.7, 60.8]
+high       = [-39.7, 115.0, -212.2, -90.5, -46.2, 0.1]
+high_left  = [0.0, 115.0, -209.8, -43.9, 1.8, 93.6]
+high_right = [0.0, 115.0, -216.3, -129.9, 2.4, 93.6]
+mid_left   = [21.3, 115.0, -201.7, 0.0, 18.5, 15.1]
+mid_right  = [-8.1, 115.0, -205.2, -40.3, 33.7, 15.1]
+
+[attacks]
+# On a random timer the robot attacks, whatever you're doing: a burst of 1-3 strikes chained back to back.
+# Each strike moves to a wind-up and swings straight through. Set enabled = false for blocking only.
+enabled = true
+# Random pause between attacks, in seconds.
+interval_s = [5.0, 15.0]
+# Strikes per attack (random in this range).
+combo = [1, 3]
+# Attack speed and acceleration (already the maximums: 180 deg/s, 1146 deg/s^2).
+speed_deg_s = 180.0
+accel_deg_s2 = 1146.0
+# Start the strike when this close (degrees) to the wind-up, so wind-up and swing blend into one motion.
+blend_deg = 35.0
+
+[attacks.moves.chop]
+windup = [-7.1, 94.0, -220.0, 1.8, 131.2, 0.1]   # J3 given as -223; kept 5 deg from the -225 limit
+strike = [-4.3, 99.1, -174.2, 1.8, 63.3, 0.1]
+
+[attacks.moves.slice_right]
+windup = [-51.9, 109.9, -219.9, 49.8, 63.3, 0.1]
+strike = [1.1, 115.0, -205.5, 49.8, 69.5, 0.1]   # J2 given as 118; kept 5 deg from the 120 limit
+
+# Mirror of slice_right across the robot's centre plane: J1, J4 and J6 change sign.
+[attacks.moves.slice_left]
+windup = [51.9, 109.9, -219.9, -49.8, 63.3, -0.1]
+strike = [-1.1, 115.0, -205.5, -49.8, 69.5, -0.1]

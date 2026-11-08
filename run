@@ -1,12 +1,17 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")"
-if [ ! -x .venv/bin/python ]; then
+# The virtualenv's Python lives in .venv/bin on macOS/Linux and .venv/Scripts on Windows.
+venv_python() {
+    if [ -x .venv/bin/python ]; then echo .venv/bin/python; elif [ -x .venv/Scripts/python.exe ]; then echo .venv/Scripts/python.exe; fi
+}
+if [ -z "$(venv_python)" ]; then
     sword_python="${PYTHON:-python3}"
     "$sword_python" -c 'import sys; sys.exit(0 if (3,11) <= sys.version_info[:2] < (3,14) else "Python 3.11–3.13 required; set PYTHON to its executable.")'
     "$sword_python" -m venv .venv
 fi
-if ! .venv/bin/python -c 'import aiohttp, numpy, xarm' >/dev/null 2>&1; then
-    .venv/bin/python -m pip install -r requirements.txt
+py="$(venv_python)"
+if ! "$py" -c 'import aiohttp, numpy, xarm' >/dev/null 2>&1; then
+    "$py" -m pip install -r requirements.txt
 fi
-exec .venv/bin/python -m sword_app "$@"
+exec "$py" -m sword_app "$@"

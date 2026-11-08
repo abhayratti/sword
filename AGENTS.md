@@ -22,7 +22,7 @@ python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
 ./quest-link
 ```
 
-Then open http://localhost:8765 on the Mac and in Quest Browser on the headset.
+Then open http://localhost:8765 on the Mac and in Quest Browser on the headset. On Windows, run `./run` from Git Bash, or use `.venvScriptspython -m sword_app`.
 
 Starting the app does **not** connect to or move the robot. The robot only moves when a person presses Connect, Home, Move here, Freedrive, or Start blocking in the page.
 
@@ -38,12 +38,13 @@ Starting the app does **not** connect to or move the robot. The robot only moves
 
 - **Never connect to, enable, or move the robot yourself.** Do not call the `/api/action` endpoint, run scripts that import `xarm`, or press buttons via browser automation. Only the human operator moves the robot.
 - **Do not run `./run` expecting to test robot behaviour.** Verify changes with the offline tests in `checks/`. They use a fake arm and never touch hardware.
-- **Do not change the block joint angles** in `config.toml` `[blocks]` unless explicitly asked. They were set by hand on the real robot. J2 = 118° is 2° from the xArm 6 joint limit (120°); never push it higher.
-- **Do not raise `max_speed_deg_s` or `max_accel_deg_s2`** unless explicitly asked. They are deliberately conservative (60°/s, 200°/s²).
+- **Do not change the block joint angles** in `config.toml` `[blocks]` unless explicitly asked. They were set by hand on the real robot. J2 is 115° in the folded blocks: at 118° the controller overshot to 119.9° while re-planning fast block switches and faulted with C23 (limit 120°). Keep at least 5° of margin.
+- **Do not change `block_speed_deg_s` or `block_accel_deg_s2`** unless explicitly asked; the operator tunes these on the real robot. Acceleration must stay at or below 1146°/s² (the SDK maximum).
 - **Do not save controller settings permanently.** The app sets payload and collision sensitivity at runtime only; do not add `save_conf()` calls.
 - **Do not commit `var/`.** It holds local calibration (`blade.json`), taught poses (`blocks.json`) and session logs, and is git-ignored.
 - Keep the app local: the server binds to 127.0.0.1 and mutation requests need the per-run `X-Sword-Key` token. Do not weaken this.
-- Keep Stop working: the Stop button, space bar, stopping on tracker disconnect, and the velocity lease (`velocity_lease_s`, so the arm stops if the app dies) must stay.
+- Keep Stop working: the Stop button, space bar, left-controller Y, and stopping when the headset leaves passthrough or disconnects must stay.
+- Blocking uses the controller's online trajectory mode (mode 6): send a block's joint pose once when the zone changes and let the controller plan the move. Do not reintroduce an app-side velocity loop; it oscillated because encoder feedback arrives late.
 
 ## Configuration (`config.toml`)
 
