@@ -57,13 +57,28 @@ class Core(unittest.TestCase):
 
     def test_lost_marker_continues_on_recent_motion_then_holds(self):
         state = State(.5, .3)
-        for i in range(5): state.update({'p': [.1*i/30, 0, 0], 'r': np.eye(3), 'kind': 'hand'}, 'a', 10+i/30)
+        for i in range(10): state.update({'p': [i/30, 0, 0], 'r': np.eye(3), 'kind': 'hand'}, 'a', 10+i/30)  # 1 m/s
         state.neutral = {'p': np.zeros(3), 'r': np.eye(3), 'basis': np.eye(3)}
-        last = 10+4/30
-        moving, _ = state.target_source(last+.2); held, _ = state.target_source(last+5)
-        self.assertGreater(moving['p'][0], .4/30)  # still moving at ~0.1 m/s after the marker vanished
-        np.testing.assert_allclose(held['p'][0], .4/30+.1*.3, atol=.003)  # stops after prediction_s
+        last, p = 10+9/30, state.pose['p'][0]; v = state.filter.velocity[0]
+        self.assertGreater(v, .5)
+        self.assertAlmostEqual(state.target_source(last+.05)[0]['p'][0], p)  # brief gap: no extrapolation yet
+        self.assertGreater(state.target_source(last+.25)[0]['p'][0], p)  # lost: keeps moving
+        self.assertAlmostEqual(state.target_source(last+5)[0]['p'][0], p + v*.3)  # then holds
         self.assertIsNone(state.current(last+5))  # not live, but the robot still has a target
+
+    def test_still_sword_jitter_is_smoothed(self):
+        state, rng = State(), np.random.default_rng(0)
+        out = []
+        for i in range(90):
+            state.update({'p': rng.normal(0, .003, 3), 'r': np.eye(3), 'kind': 'hand'}, 'a', 10+i/30)
+            out.append(state.pose['p'])
+        self.assertLess(np.std(np.array(out[30:])), .0018)  # 3 mm raw noise -> well under half; the deadband absorbs the rest
+
+    def test_pose_flip_is_ignored(self):
+        state = State()
+        state.update({'p': [0, 0, 0], 'r': np.eye(3), 'kind': 'hand'}, 'a', 10)
+        state.update({'p': [0, 0, 0], 'r': from_rpy([90, 0, 0]), 'kind': 'hand'}, 'a', 10.03)
+        np.testing.assert_allclose(state.pose['r'], np.eye(3))
 
     def test_robot_follows_tracking_and_stops(self):
         state = State(.5); state.update({'p': [0, 0, 0], 'r': np.eye(3), 'kind': 'hand'}, 'a'); state.set_guard()

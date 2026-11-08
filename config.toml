@@ -6,6 +6,17 @@ max_accel_deg_s2 = [1000.0, 800.0, 800.0, 1000.0, 1000.0, 1000.0]
 kp = 12.0
 position_gain = 1.0
 rotation_gain = 1.0
+# Ignore this much offset from your guard (soft: motion beyond it stays smooth).
+deadband_m = 0.004
+deadband_deg = 1.5
+# Tracking smoothing (One Euro filter). Lower min cutoff = steadier when still but laggier;
+# higher beta = less lag during fast motion. Position beta is per m/s, rotation per rad/s.
+smoothing_min_cutoff_hz = 1.0
+smoothing_beta_position = 10.0
+smoothing_beta_rotation = 3.0
+# Ignore IK solutions that jump any joint more than this from the current target
+# (a different arm configuration) unless the jump persists for 0.2 s.
+ik_jump_deg = 45.0
 # Hardware watchdog: each velocity command expires after this long if the app stops sending.
 velocity_lease_s = 0.2
 # A measurement counts as live for this long (UI and setting the guard). The robot never drops the last pose.
@@ -24,3 +35,6 @@ blade_length_m = 0.40
 checkerboard_inner = [9, 6]
 checkerboard_square_m = 0.025
 minimum_calibration_views = 12
+# Reuse the last board pose this long after the board leaves view. Your head moves the camera,
+# so a long memory turns head motion into robot motion.
+board_memory_s = 1.0

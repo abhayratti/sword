@@ -123,8 +123,8 @@ class Vision:
         if self.calibration is not None:
             board, anchor = self._board(gray)
             if board: objects.append(board)
-            if anchor is not None: self.last_anchor, reference = anchor, 'live'
-            elif self.last_anchor is not None:
+            if anchor is not None: self.last_anchor, reference = {**anchor, 'at': frame_at}, 'live'
+            elif self.last_anchor is not None and frame_at - self.last_anchor['at'] <= self.cfg['board_memory_s']:
                 # Board out of view: keep using its last pose. Accurate while the camera
                 # stays put; headset movement during the gap shows up as sword movement.
                 anchor, reference = self.last_anchor, 'remembered'

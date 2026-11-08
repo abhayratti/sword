@@ -23,7 +23,7 @@ class Robot:
         self.closed, self.stop_requested = threading.Event(), threading.Event()
         self.arm = None; self.active = False; self.moving = False; self.log = None
         self.low, self.high = np.full(6, -360.), np.full(6, 360.)
-        self.velocity = np.zeros(6); self.target = None
+        self.velocity = np.zeros(6); self.target = self.jump_since = None
         self.last_tick = self.last_feedback = 0.
         self.thread = threading.Thread(target=self._run, name='robot-writer', daemon=True)
 
@@ -111,7 +111,7 @@ class Robot:
     def _start(self):
         self._ready(4)
         self.home_pose = self._fk(self._actual())
-        self.velocity = np.zeros(6); self.target = None; self.last_tick = time.monotonic()
+        self.velocity = np.zeros(6); self.target = self.jump_since = None; self.last_tick = time.monotonic()
         self.storage.mkdir(parents=True, exist_ok=True)
         self.log = (self.storage / ('run-' + time.strftime('%Y%m%dT%H%M%SZ', time.gmtime()) + '.jsonl')).open('w')
         self._record('start', config=self.cfg)
@@ -123,20 +123,30 @@ class Robot:
         dt = min(now - self.last_tick, self.cfg['velocity_lease_s']); self.last_tick = now
         source, neutral = self.state.target_source()
         if source is not None:
-            desired = mirrored_pose(source, neutral, self.home_pose, self.cfg['position_gain'], self.cfg['rotation_gain'])
+            desired = mirrored_pose(source, neutral, self.home_pose, self.cfg['position_gain'], self.cfg['rotation_gain'],
+                                    self.cfg['deadband_m'], self.cfg['deadband_deg'])
             code, solution = self.arm.get_inverse_kinematics(desired.tolist(), input_is_radian=False, return_is_radian=False)
             if code == 0:
                 t = np.array(solution[:6], float)
                 for j in (0, 3, 5): t[j] += 360 * round((q[j] - t[j]) / 360)  # nearest wrap of periodic joints
-                self.target = np.clip(t, self.low, self.high)
+                t = np.clip(t, self.low, self.high)
+                # Unseeded IK can switch to a different arm configuration for a tiny pose change.
+                # Ignore such jumps unless they persist (then the pose really is over there).
+                if self.target is not None and np.max(np.abs(t - self.target)) > self.cfg['ik_jump_deg']:
+                    self.jump_since = self.jump_since or now
+                    if now - self.jump_since >= .2: self.target, self.jump_since = t, None
+                else:
+                    self.target, self.jump_since = t, None
         target = q if self.target is None else self.target
         self.velocity = velocity_step(target, q, self.velocity, dt, self.cfg)
         self._check(self.arm.vc_set_joint_velocity([*self.velocity, 0.], is_radian=False, is_sync=False,
                                                    duration=self.cfg['velocity_lease_s']), 'Velocity')
-        self._record('sample', actual_deg=q.tolist(), target_deg=target.tolist(), command_deg_s=self.velocity.tolist())
+        self._record('sample', actual_deg=q.tolist(), target_deg=target.tolist(), command_deg_s=self.velocity.tolist(),
+                     requested_pose=None if source is None else desired.tolist(),
+                     tracking_age_s=None if source is None else source['age'], ik_jump_held=self.jump_since is not None)
         if source is None: reason = 'Waiting for tracking and a set guard'
-        elif source['age'] <= .15: reason = 'Following tracked pose'
-        elif source['age'] <= self.cfg['prediction_s']: reason = 'Marker lost; continuing on recent motion'
+        elif source['age'] <= .1: reason = 'Following tracked pose'
+        elif source['age'] <= .1 + self.cfg['prediction_s']: reason = 'Marker lost; continuing on recent motion'
         else: reason = 'Marker lost; holding last pose until it returns'
         self._publish('running' if source is not None else 'holding', reason,
                       joints=q.tolist(), target=target.tolist(), command=self.velocity.tolist(), feedback_at=now)

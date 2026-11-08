@@ -28,11 +28,17 @@ def to_rpy(r):
     return np.degrees([roll, p, yaw])
 
 
-def mirrored_pose(source, neutral, home_pose, gain=1., rotation_gain=1.):
-    """Apply the tracked motion since the neutral guard to the robot's home pose."""
+def mirrored_pose(source, neutral, home_pose, gain=1., rotation_gain=1., deadband_m=0., deadband_deg=0.):
+    """Apply the tracked motion since the neutral guard to the robot's home pose.
+
+    Soft deadbands ignore small offsets around the guard, then respond smoothly beyond them."""
     m = neutral['basis']
-    p = np.asarray(home_pose[:3]) + gain * 1000 * (m @ (source['p'] - neutral['p']))
-    turn = cv2.Rodrigues(m @ source['r'] @ neutral['r'].T @ m.T)[0] * rotation_gain
+    delta = source['p'] - neutral['p']
+    delta = delta * max(0., 1 - deadband_m / max(np.linalg.norm(delta), 1e-12))
+    p = np.asarray(home_pose[:3]) + gain * 1000 * (m @ delta)
+    turn = cv2.Rodrigues(m @ source['r'] @ neutral['r'].T @ m.T)[0]
+    angle = np.linalg.norm(turn)
+    turn = turn * rotation_gain * max(0., 1 - math.radians(deadband_deg) / max(angle, 1e-12))
     r = cv2.Rodrigues(turn)[0] @ from_rpy(home_pose[3:])
     return np.r_[p, to_rpy(r)]
 
