@@ -1,7 +1,6 @@
 """Local application server. No robot connection or movement on startup."""
 import argparse
 import asyncio
-import base64
 import json
 from pathlib import Path
 import secrets
@@ -9,25 +8,20 @@ import time
 import tomllib
 from urllib.parse import urlsplit
 from aiohttp import WSMsgType, web
-import numpy as np
+from .blocking import BLOCKS
 from .math3d import from_quaternion
 from .robot import Robot
 from .state import State
-from .vision import Vision
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def create_app(root=ROOT):
     config = tomllib.loads((root/'config.toml').read_text())
-    r = config['robot']
-    state = State(r['tracking_timeout_s'], r['prediction_s'],
-                  (r['smoothing_min_cutoff_hz'], r['smoothing_beta_position'], r['smoothing_beta_rotation']))
+    state = State({**config['tracking'], **config['blocking']}, root/'var')
     robot = Robot(state, config['robot'], root/'var')
-    vision = Vision(config['vision'], root/'var')
     key = secrets.token_urlsafe(32)
     owner = None
-    vision_lock = asyncio.Lock()
 
     @web.middleware
     async def local_only(request, handler):
@@ -42,72 +36,49 @@ def create_app(root=ROOT):
         response.headers['Cache-Control'] = 'no-store'
         return response
 
-    app = web.Application(client_max_size=4*1024*1024, middlewares=[local_only])
+    app = web.Application(middlewares=[local_only])
 
     async def snapshot(request):
-        result = state.snapshot(); result.update(key=key, blade_length_m=config['vision']['blade_length_m'])
+        result = state.snapshot()
+        result.update(key=key, blocks=BLOCKS, taught=sorted(robot.blocks), zones=config['blocking'])
         return web.json_response(result)
 
     async def action(request):
-        op = (await request.json()).get('action')
+        data = await request.json(); op = data.get('action')
         if op == 'stop': robot.stop(); message = 'Stop requested'
         elif op == 'guard': message = state.set_guard()
-        elif op in {'connect', 'home', 'start', 'disconnect'}:
-            robot.request(op); message = op.capitalize()+' requested'
-        elif op in {'capture_board', 'calibrate_camera', 'reset_camera'}:
-            async with vision_lock:
-                if op == 'capture_board': result = await asyncio.to_thread(vision.capture_board)
-                elif op == 'calibrate_camera': result = await asyncio.to_thread(vision.solve_calibration)
-                else: result = vision.reset()
-            if op != 'capture_board': state.note('Camera setup changed; set guard again', reset=True)
-            with state.lock: state.vision['camera'] = result
-            message = 'Camera setup updated'
+        elif op == 'blade_up': message = state.set_blade_up()
+        elif op in {'connect', 'home', 'start', 'disconnect', 'freedrive', 'save_block', 'goto_block'}:
+            robot.request(op, data.get('value')); message = op.replace('_', ' ').capitalize() + ' requested'
         else: raise ValueError('Unknown action')
         return web.json_response({'message': message})
-
-    async def frame(request):
-        with state.lock:
-            if state.frame_jpeg is None: raise web.HTTPNotFound()
-            jpeg = state.frame_jpeg
-        return web.Response(body=jpeg, content_type='image/jpeg')
 
     async def tracking(request):
         nonlocal owner
         if not secrets.compare_digest(request.query.get('key', ''), key): raise web.HTTPForbidden()
         if owner is not None: raise web.HTTPConflict(text='A tracking device is already connected')
-        ws = web.WebSocketResponse(max_msg_size=4*1024*1024, heartbeat=2)
+        ws = web.WebSocketResponse(heartbeat=2)
         await ws.prepare(request); owner = ws
-        sequence = 0
         await ws.send_json({'ready': True})
         try:
-            # The device sends one sample, then waits for this reply before sending the next.
+            # The headset sends one sample, then waits for this reply before sending the next.
             async for msg in ws:
                 if msg.type != WSMsgType.TEXT: break
-                received = time.monotonic(); error = None
+                received = time.monotonic(); error = message = None
                 try:
-                    payload = json.loads(msg.data); epoch = payload.get('epoch'); kind = payload.get('kind')
-                    if payload.get('valid') is not True:
-                        state.note(str(payload.get('reason', 'Tracking unavailable')), reset=payload.get('reset') is True)
-                    elif kind == 'markers':
-                        jpeg = base64.b64decode(payload['jpeg'])
-                        async with vision_lock:
-                            result, pose = await asyncio.to_thread(vision.process, jpeg, payload['camera_key'], received)
-                        sequence += 1; result['frame_id'] = sequence
-                        with state.lock:
-                            state.vision = result; state.frame_jpeg = jpeg; state.last_frame_at = received
-                        if pose is not None: state.update(pose, epoch, received)
-                        elif not result['camera']['calibrated']: state.note('Camera calibration needed')
-                        else:
-                            seen = {o['name'] for o in result['objects'] if o['pose']}
-                            state.note('; '.join(label+' not visible' for name, label in
-                                                 [('human', 'Your sword'), ('anchor', 'Reference board')] if name not in seen))
-                    elif kind in {'hand', 'controller'}:
-                        state.update({'p': np.asarray(payload['position'], float), 'r': from_quaternion(payload['orientation']),
-                                      'kind': kind, 'head_q': payload.get('head_orientation', [0, 0, 0, 1])}, epoch, received)
-                    else: raise ValueError('Unknown tracking source')
+                    payload = json.loads(msg.data)
+                    if payload.get('reset'): state.note(str(payload.get('reason', 'Tracking reset')), reset=True)
+                    elif payload.get('valid'):
+                        state.update(payload['position'], from_quaternion(payload['orientation']),
+                                     payload['head_orientation'], payload['epoch'], received)
+                    else: state.note(str(payload.get('reason', 'Controller not tracked')))
+                    # Controller buttons: A = set guard, B = calibrate blade (pointing straight up).
+                    command = payload.get('command')
+                    if command == 'guard': message = state.set_guard()
+                    elif command == 'blade_up': message = state.set_blade_up()
                 except (ValueError, KeyError, TypeError) as exc:
                     error = str(exc)[:160]; state.note(error)
-                await ws.send_json({'error': error, 'tracking': state.snapshot()['tracking']})
+                await ws.send_json({'error': error, 'message': message})
         finally:
             if owner is ws: owner = None; state.note('Tracking device disconnected')
         return ws
@@ -123,13 +94,13 @@ def create_app(root=ROOT):
         await asyncio.to_thread(robot.close)
     app.on_startup.append(startup); app.on_cleanup.append(cleanup)
     app.router.add_get('/api/state', snapshot); app.router.add_post('/api/action', action)
-    app.router.add_get('/api/frame', frame); app.router.add_get('/tracking', tracking)
+    app.router.add_get('/tracking', tracking)
     app.router.add_get('/{path:.*}', page)
     return app
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Sword · local tracking and mirroring app')
+    parser = argparse.ArgumentParser(description='Sword · local blocking app')
     parser.add_argument('--port', type=int, default=8765)
     args = parser.parse_args()
     print(f'Sword: http://localhost:{args.port}', flush=True)

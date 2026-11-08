@@ -1,56 +1,37 @@
-"""Rigid transforms. Metres for tracking; millimetres at the robot boundary."""
+"""Rotation helpers (numpy only). WebXR space: +X right, +Y up, -Z forward."""
 import math
-import cv2
 import numpy as np
 
 
 def from_quaternion(value):
-    q = np.asarray(value, dtype=float)
-    x, y, z, w = q / np.linalg.norm(q)
+    x, y, z, w = np.asarray(value, dtype=float) / np.linalg.norm(value)
     return np.array([[1-2*(y*y+z*z), 2*(x*y-z*w), 2*(x*z+y*w)],
                      [2*(x*y+z*w), 1-2*(x*x+z*z), 2*(y*z-x*w)],
                      [2*(x*z-y*w), 2*(y*z+x*w), 1-2*(x*x+y*y)]])
 
 
-def from_rpy(value):
-    r, p, y = np.radians(np.asarray(value, dtype=float))
-    cr, sr, cp, sp, cy, sy = math.cos(r), math.sin(r), math.cos(p), math.sin(p), math.cos(y), math.sin(y)
-    return np.array([[cy*cp, cy*sp*sr-sy*cr, cy*sp*cr+sy*sr],
-                     [sy*cp, sy*sp*sr+cy*cr, sy*sp*cr-cy*sr], [-sp, cp*sr, cp*cr]])
+def rotvec(r):
+    """Rotation matrix -> axis * angle (radians)."""
+    angle = math.acos(max(-1., min(1., (np.trace(r) - 1) / 2)))
+    if angle < 1e-9: return np.zeros(3)
+    if angle > math.pi - 1e-4:  # near 180 degrees the antisymmetric part vanishes
+        b = (r + np.eye(3)) / 2; k = int(np.argmax(np.diag(b)))
+        return b[:, k] / math.sqrt(b[k, k]) * angle
+    return np.array([r[2, 1]-r[1, 2], r[0, 2]-r[2, 0], r[1, 0]-r[0, 1]]) * angle / (2 * math.sin(angle))
 
 
-def to_rpy(r):
-    p = math.atan2(-r[2, 0], math.hypot(r[0, 0], r[1, 0]))
-    if abs(math.cos(p)) > 1e-7:
-        roll, yaw = math.atan2(r[2, 1], r[2, 2]), math.atan2(r[1, 0], r[0, 0])
-    else:
-        roll, yaw = 0., math.atan2(-r[0, 1], r[1, 1])
-    return np.degrees([roll, p, yaw])
+def from_rotvec(v):
+    """Axis * angle -> rotation matrix (Rodrigues)."""
+    angle = np.linalg.norm(v)
+    if angle < 1e-12: return np.eye(3)
+    x, y, z = np.asarray(v) / angle
+    k = np.array([[0, -z, y], [z, 0, -x], [-y, x, 0]])
+    return np.eye(3) + math.sin(angle) * k + (1 - math.cos(angle)) * k @ k
 
 
-def mirrored_pose(source, neutral, home_pose, gain=1., rotation_gain=1., deadband_m=0., deadband_deg=0.):
-    """Apply the tracked motion since the neutral guard to the robot's home pose.
-
-    Soft deadbands ignore small offsets around the guard, then respond smoothly beyond them."""
-    m = neutral['basis']
-    delta = source['p'] - neutral['p']
-    delta = delta * max(0., 1 - deadband_m / max(np.linalg.norm(delta), 1e-12))
-    p = np.asarray(home_pose[:3]) + gain * 1000 * (m @ delta)
-    turn = cv2.Rodrigues(m @ source['r'] @ neutral['r'].T @ m.T)[0]
-    angle = np.linalg.norm(turn)
-    turn = turn * rotation_gain * max(0., 1 - math.radians(deadband_deg) / max(angle, 1e-12))
-    r = cv2.Rodrigues(turn)[0] @ from_rpy(home_pose[3:])
-    return np.r_[p, to_rpy(r)]
-
-
-# Marker/board axes: +X right, +Y toward the arrow, +Z toward the camera.
-MARKER_BASIS = np.array([[0., 0., -1.], [1., 0., 0.], [0., 1., 0.]])
-
-
-def source_basis(kind, head_q=None):
-    if kind == 'markers': return MARKER_BASIS
-    forward = from_quaternion(head_q or [0, 0, 0, 1]) @ np.array([0., 0., -1.]); forward[1] = 0
-    if np.linalg.norm(forward) < .1: forward = np.array([0., 0., -1.])
-    forward /= np.linalg.norm(forward)
-    axes = np.column_stack((np.cross(forward, [0, 1, 0]), [0, 1, 0], -forward))
-    return MARKER_BASIS @ axes.T
+def user_frame(head_q):
+    """Rows: the user's right, up, and forward (toward the robot), from head yaw only."""
+    forward = from_quaternion(head_q) @ np.array([0., 0., -1.]); forward[1] = 0
+    forward = forward / np.linalg.norm(forward) if np.linalg.norm(forward) > .1 else np.array([0., 0., -1.])
+    up = np.array([0., 1., 0.])
+    return np.array([np.cross(forward, up), up, forward])

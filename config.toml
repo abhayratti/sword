@@ -1,40 +1,48 @@
 [robot]
 ip = "192.168.1.206"
+# Default guard pose. Teaching "guard" in the app overrides it (saved in var/blocks.json with the other blocks).
 guard_deg = [-1.0, 52.1, -106.7, 0.0, -20.7, 0.1]
 max_speed_deg_s = [180.0, 150.0, 150.0, 180.0, 180.0, 180.0]
 max_accel_deg_s2 = [1000.0, 800.0, 800.0, 1000.0, 1000.0, 1000.0]
 kp = 12.0
-position_gain = 1.0
-rotation_gain = 1.0
-# Ignore this much offset from your guard (soft: motion beyond it stays smooth).
-deadband_m = 0.004
-deadband_deg = 1.5
-# Tracking smoothing (One Euro filter). Lower min cutoff = steadier when still but laggier;
-# higher beta = less lag during fast motion. Position beta is per m/s, rotation per rad/s.
-smoothing_min_cutoff_hz = 1.0
-smoothing_beta_position = 10.0
-smoothing_beta_rotation = 3.0
-# Ignore IK solutions that jump any joint more than this from the current target
-# (a different arm configuration) unless the jump persists for 0.2 s.
-ik_jump_deg = 45.0
 # Hardware watchdog: each velocity command expires after this long if the app stops sending.
 velocity_lease_s = 0.2
-# A measurement counts as live for this long (UI and setting the guard). The robot never drops the last pose.
-tracking_timeout_s = 0.5
-# When the marker is lost, keep moving along its recent motion for up to this long, then hold.
-prediction_s = 0.3
-home_speed_deg_s = 20.0
+home_speed_deg_s = 30.0
+# Speed for "Move here" when checking a taught block.
+teach_speed_deg_s = 15.0
+# Foam sword payload, so contact isn't mistaken for a crash. Centre of gravity is from the
+# flange in the tool frame (z points out of the flange) — measure and update.
+sword_weight_kg = 0.15
+sword_center_of_gravity_mm = [0.0, 0.0, 150.0]
+# 0 = collision detection off, 5 = most sensitive.
+collision_sensitivity = 2
+# On a collision error (C31): clear it, return to guard, keep blocking.
+collision_auto_home = true
 
-[vision]
-dictionary = "DICT_4X4_50"
-human_id = 10
-robot_id = 20
-marker_size_m = 0.05
-# Marker centre to tip, for the blade overlay.
-blade_length_m = 0.40
-checkerboard_inner = [9, 6]
-checkerboard_square_m = 0.025
-minimum_calibration_views = 12
-# Reuse the last board pose this long after the board leaves view. Your head moves the camera,
-# so a long memory turns head motion into robot motion.
-board_memory_s = 1.0
+[tracking]
+# Right Quest controller taped to the hilt. Distance from the controller grip to the blade tip.
+blade_length_m = 0.6
+# Without a new controller pose for this long, the robot returns to guard.
+tracking_timeout_s = 0.3
+# One Euro smoothing. Lower min cutoff = steadier when still; higher beta = less lag when fast.
+smoothing_min_cutoff_hz = 2.0
+smoothing_beta_position = 5.0
+smoothing_beta_rotation = 1.0
+
+[blocking]
+# Zones are measured from the tip's position at your guard. Beyond side_m to either side,
+# or height_m above/below, the robot moves to that side/height's block.
+side_m = 0.15
+height_m = 0.15
+# Extra distance needed to enter or leave a zone, so the robot doesn't flicker at the edges.
+hysteresis_m = 0.03
+# How long the tip must stay in a new zone before the robot switches (outside strikes).
+dwell_s = 0.07
+# Pick the zone from where the tip will be this far ahead, to hide system delay.
+lookahead_s = 0.15
+# Tip speed that counts as a strike: the robot commits to the block from where it started.
+strike_speed_m_s = 1.5
+# The strike lock ends after the tip has been below the strike speed this long.
+release_s = 0.25
+# Forward tip speed (toward the robot) in the centre zone that counts as a thrust.
+thrust_speed_m_s = 0.8

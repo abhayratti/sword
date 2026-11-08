@@ -1,80 +1,84 @@
 import {Tracker} from './tracking.js';
-const $=id=>document.getElementById(id);let state=null,key=null,renderedFrame=null,frameBusy=false,pollTimer;
-const canvas=$('scene'),ctx=canvas.getContext('2d');const colors={human:'#79e2cf',robot:'#edb775',anchor:'#c5ced4'};
-const tracker=new Tracker(text=>{$('device-message').textContent=text;},()=>{action('stop').catch(()=>{});$('track').firstChild.textContent='Start tracking on this device ';});
+const $=id=>document.getElementById(id);let key=null;
+const canvas=$('scene'),ctx=canvas.getContext('2d');
+const LABELS={guard:'Guard',high:'High',high_left:'High left',high_right:'High right',mid_left:'Mid left',mid_right:'Mid right',low_left:'Low left',low_right:'Low right',thrust:'Centre (thrust)'};
+// Grid cell for each block, as [row, column] seen from behind the robot (robot's left on the left).
+const CELLS={high_left:[0,0],high:[0,1],high_right:[0,2],mid_left:[1,0],guard:[1,1],thrust:[1,1],mid_right:[1,2],low_left:[2,0],low_right:[2,2]};
+const tracker=new Tracker(text=>{$('device-message').textContent=text;},()=>{action('stop').catch(()=>{});$('track').firstChild.textContent='Start tracking on this headset ';});
 for(let i=1;i<=6;i++){const node=document.createElement('div');node.className='joint';node.innerHTML=`<label>J${i}</label><strong>—</strong><em>No feedback</em>`;$('joints').append(node);}
 function notice(text){$('notice').textContent=text;$('notice').hidden=!text;}
-async function action(name){
+async function action(name,value){
   if(!key)throw new Error('The local app is disconnected');
-  const res=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json','X-Sword-Key':key},body:JSON.stringify({action:name})});
-  const data=await res.json();if(!res.ok)throw new Error(data.error||data.message||`Action failed (${res.status})`);
+  const res=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json','X-Sword-Key':key},body:JSON.stringify({action:name,value})});
+  const data=await res.json();if(!res.ok)throw new Error(data.error||`Action failed (${res.status})`);
   return data;
 }
-async function perform(name){try{const result=await action(name);notice(result.message);}catch(e){notice(e.message);}}
-for(const [id,name] of [['stop','stop'],['connect','connect'],['home','home'],['mirror','start'],['guard','guard'],['capture','capture_board'],['calibrate','calibrate_camera'],['reset-camera','reset_camera']])$(id).addEventListener('click',()=>perform(name));
-document.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&!['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)){e.preventDefault();perform('stop');}});
+async function perform(name,value){try{notice((await action(name,value)).message);}catch(e){notice(e.message);}}
+for(const [id,name] of [['stop','stop'],['connect','connect'],['home','home'],['start','start'],['guard','guard'],['blade','blade_up']])$(id).addEventListener('click',()=>perform(name));
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat){e.preventDefault();perform('stop');}});
 $('track').addEventListener('click',async()=>{
   try{
     if(tracker.running){await tracker.stop();notice('Tracking stopped.');return;}
     if(!key)throw new Error('Wait for the Mac connection');
-    notice('');
-    $('track').disabled=true;await tracker.start($('source').value,key);
-    $('track').firstChild.textContent='Stop tracking on this device ';
-    notice('Tracking started. Set the guard when your normal pose is visible.');
-  }catch(e){notice(e.message||e.name||'Tracking could not start');}finally{$('track').disabled=false;}
+    $('track').disabled=true;await tracker.start(key);
+    $('track').firstChild.textContent='Stop tracking on this headset ';
+  }catch(e){notice(e.message||'Tracking could not start');}finally{$('track').disabled=false;}
 });
-$('passthrough').addEventListener('click',async()=>{try{if(!tracker.running)throw new Error('Start tracking first');await tracker.xr();}catch(e){notice(e.message);}});
-$('source').addEventListener('change',async()=>{
-  if(tracker.running)await tracker.stop();
-  const help={markers:'Directly detects the markers on both swords. A fixed reference removes headset motion.',controller:'Uses the right controller grip pose. Mount it rigidly; this does not observe foam-blade bending.',hand:'Tracks the right wrist, not the sword itself. A changed grip changes the inferred blade direction.'};
-  $('source-help').textContent=help[$('source').value];
-});
-async function drawFrame(vision){
-  if(frameBusy||!vision.frame_id||renderedFrame===vision.frame_id)return;
-  frameBusy=true;
-  try{
-    const res=await fetch('/api/frame');if(!res.ok)return;
-    const bitmap=await createImageBitmap(await res.blob());canvas.width=vision.width;canvas.height=vision.height;ctx.drawImage(bitmap,0,0);bitmap.close();
-    for(const object of vision.objects){
-      const p=object.corners;ctx.strokeStyle=colors[object.name];ctx.lineWidth=3;ctx.beginPath();p.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.stroke();
-      if(object.blade_pixels){const [base,tip]=object.blade_pixels;ctx.setLineDash([8,6]);ctx.beginPath();ctx.moveTo(...base);ctx.lineTo(...tip);ctx.stroke();ctx.setLineDash([]);}
-      const label=(object.id==='board'?'REFERENCE BOARD':object.name.toUpperCase()+' '+object.id)+(object.pose?' · 3D':' · 2D');ctx.font='bold 17px system-ui';
-      const x=Math.min(canvas.width-ctx.measureText(label).width-14,Math.max(5,p[0][0])),y=Math.max(30,p[0][1]-8);
-      ctx.fillStyle='#10251fe8';ctx.fillRect(x-5,y-23,ctx.measureText(label).width+12,30);ctx.fillStyle=colors[object.name];ctx.fillText(label,x,y);
-    }
-    renderedFrame=vision.frame_id;$('empty').hidden=true;
-  }catch(e){notice('Camera preview: '+e.message);}finally{frameBusy=false;}
+let freedrive=false;
+$('freedrive').addEventListener('click',()=>perform('freedrive',!freedrive));
+let blockRows=null;
+function buildBlocks(names){
+  blockRows={};
+  for(const name of names){
+    const row=document.createElement('div');row.className='block';
+    row.innerHTML=`<span>${LABELS[name]}</span><em>—</em><button>Save</button><button>Move here</button>`;
+    const [save,move]=row.querySelectorAll('button');
+    save.addEventListener('click',()=>perform('save_block',name));move.addEventListener('click',()=>perform('goto_block',name));
+    $('blocks').append(row);blockRows[name]=row;
+  }
+}
+function draw(s){
+  const w=canvas.width,h=canvas.height,z=s.zones,t=s.threat,range=.45,scale=Math.min(w,h)/(2*range);
+  const X=x=>w/2-x*scale,Y=y=>h/2-y*scale;  // offset x is toward the robot's left: draw it on the left
+  ctx.fillStyle='#10251f';ctx.fillRect(0,0,w,h);
+  const xs=[0,X(z.side_m),X(-z.side_m),w],ys=[0,Y(z.height_m),Y(-z.height_m),h];
+  const cell=CELLS[t.zone];
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+    const active=cell&&cell[0]===r&&cell[1]===c;
+    ctx.fillStyle=active?(t.strike?'#c0503a':'#79e2cf55'):'transparent';ctx.fillRect(xs[c],ys[r],xs[c+1]-xs[c],ys[r+1]-ys[r]);
+    ctx.strokeStyle='#c5ced455';ctx.lineWidth=2;ctx.strokeRect(xs[c],ys[r],xs[c+1]-xs[c],ys[r+1]-ys[r]);
+    const name=Object.keys(CELLS).find(n=>n!=='thrust'&&CELLS[n][0]===r&&CELLS[n][1]===c)||'guard';
+    ctx.fillStyle='#c5ced4';ctx.font='bold 26px system-ui';ctx.textAlign='center';
+    ctx.fillText(r===1&&c===1?'Guard / thrust':LABELS[name],(xs[c]+xs[c+1])/2,ys[r]+40);
+  }
+  if(t.offset&&s.tracking.guard_set){
+    ctx.strokeStyle='#edb775';ctx.lineWidth=3;ctx.beginPath();ctx.arc(X(t.predicted[0]),Y(t.predicted[1]),18,0,7);ctx.stroke();
+    ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(X(t.offset[0]),Y(t.offset[1]),12,0,7);ctx.fill();
+  }
 }
 function update(s){
-  state=s;key=s.key;$('link-light').className='good';$('link-state').textContent='Mac connected';
-  const t=s.tracking,r=s.robot,cam=s.vision.camera||{};
-  $('pose-quality').textContent=t.fresh?(t.kind==='hand'?'HAND ESTIMATE':'LIVE 3D POSE'):'NO LIVE 3D POSE';
-  $('guard').disabled=!t.fresh;
-  $('guard-status').textContent=t.guard_set?'Guard set. Move naturally from this position.':'Hold your normal guard, then set it here. No touching the blade base or tip.';
-  const connected=!!r.firmware&&['connected','stopped','fault'].includes(r.state);
-  $('home').disabled=!connected;$('mirror').disabled=!connected||!t.guard_set;
-  $('connect').disabled=['working','running','holding','homing'].includes(r.state);
+  key=s.key;$('link-light').className='good';$('link-state').textContent='Mac connected';
+  const t=s.tracking,r=s.robot;
+  if(!blockRows)buildBlocks(s.blocks);
+  for(const [name,row] of Object.entries(blockRows))row.querySelector('em').textContent=s.taught.includes(name)?'taught':'—';
+  $('teach-status').textContent=`${s.taught.length} / ${s.blocks.length} taught`;
+  $('tracking-state').textContent=t.fresh?'live':'—';$('blade-state').textContent=t.blade_calibrated?'set':'—';$('guard-state').textContent=t.guard_set?'set':'—';
+  $('zone-label').textContent=(s.threat.strike?'STRIKE · ':'')+(LABELS[s.threat.zone]||s.threat.zone).toUpperCase();
+  $('guard-status').textContent=!t.blade_calibrated?'Point the sword straight up and press B on the controller.':!t.guard_set?'Hold your normal guard and press A on the controller.':'Ready. Press A again any time to re-centre your guard.';
+  const connected=!!r.firmware&&!['disconnected','working'].includes(r.state);
+  freedrive=r.state==='freedrive';$('freedrive').textContent=freedrive?'Freedrive off':'Freedrive on';$('freedrive').disabled=!connected;
+  for(const row of Object.values(blockRows))row.querySelectorAll('button').forEach(b=>b.disabled=!connected);
+  $('home').disabled=!connected;$('start').disabled=!connected||!t.guard_set;
   $('connect').textContent=['disconnected','fault'].includes(r.state)?'Connect':'Reconnect';
-  $('robot-status').textContent=r.reason;$('mirror').firstChild.textContent=['running','holding'].includes(r.state)?'Mirroring session open ':'Start mirroring ';
-  $('age').textContent=t.fresh?`${t.age_ms} ms pose age estimate · ${t.kind}`:t.reason;
-  $('view-title').textContent=t.kind==='markers'?'CAMERA VIEW':t.kind==='controller'?'CONTROLLER INPUT':'HAND INPUT / ESTIMATE';
-  const nodes=Array.from($('joints').children);
-  nodes.forEach((node,i)=>{node.querySelector('strong').textContent=Number.isFinite(r.joints?.[i])?`${r.joints[i].toFixed(1)}°`:'—';node.querySelector('em').textContent=Number.isFinite(r.command?.[i])?`${r.command[i].toFixed(1)}°/s cmd`:'No live command';});
+  $('robot-status').textContent=r.reason;$('start').firstChild.textContent=r.state==='running'?'Blocking… ':'Start blocking ';
+  $('age').textContent=t.fresh?`${t.age_ms} ms since last controller pose`:t.reason;
+  Array.from($('joints').children).forEach((node,i)=>{node.querySelector('strong').textContent=Number.isFinite(r.joints?.[i])?`${r.joints[i].toFixed(1)}°`:'—';node.querySelector('em').textContent=Number.isFinite(r.command?.[i])?`${r.command[i].toFixed(1)}°/s cmd`:'No live command';});
   $('joint-description').textContent=r.joints?`Encoder feedback · ${r.feedback_age_ms??'—'} ms old`:'Waiting for robot encoders';
-  $('camera-status').textContent=cam.calibrated?'Calibration saved':`${cam.views||0} / ${cam.needed||12} views`;
-  $('board-count').textContent=`${cam.views||0}/12`;
-  $('calibration-detail').textContent=cam.calibrated?`${cam.method==='factory_intrinsics_checked'?'Factory lens':`Fit ${cam.rms_px.toFixed(2)} px`} · validation ${Math.max(...cam.validation_px).toFixed(2)} px`:'Use the second page of the print kit; squares must measure 25 mm.';
-  $('calibrate').disabled=(cam.views||0)<12;
-  for(const [name,id] of [['human','human-state'],['robot','robot-marker-state'],['anchor','anchor-state']]){
-    const object=s.vision.objects?.find(x=>x.name===name);$(id).textContent=s.frame_age_ms>500?'stale':object?.pose?'3D':name==='anchor'&&s.vision.reference==='remembered'?'held':object?'2D':'—';
-  }
-  if(s.frame_age_ms!==null&&s.frame_age_ms<500)drawFrame(s.vision);
-  else if(renderedFrame!==null){ctx.clearRect(0,0,canvas.width,canvas.height);renderedFrame=null;$('empty').hidden=false;}
-  if(r.speed_caps)$('motion-detail').textContent=`Joint speed caps: ${r.speed_caps.join(' / ')}°/s. Tracking loss holds the last target; Stop and controller errors end the session.`;
+  draw(s);
 }
 async function poll(){
   try{const res=await fetch('/api/state',{cache:'no-store',signal:AbortSignal.timeout(1500)});if(!res.ok)throw new Error();update(await res.json());}
-  catch{$('link-light').className='';$('link-state').textContent='Mac disconnected';key=null;$('mirror').disabled=true;$('guard').disabled=true;}
-  pollTimer=setTimeout(poll,150);
+  catch{$('link-light').className='';$('link-state').textContent='Mac disconnected';key=null;$('start').disabled=true;}
+  setTimeout(poll,100);
 }
 poll();

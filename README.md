@@ -1,6 +1,6 @@
 # Sword
 
-Local app for Quest camera tracking and xArm 6 pose mirroring.
+Local app that makes an xArm 6 block foam-sword strikes. The robot holds a set of taught block poses and moves to the one that covers where your sword is threatening, tracked by a Quest controller taped to your hilt.
 
 ```sh
 ./run
@@ -10,23 +10,39 @@ Open **http://localhost:8765** on the Mac and in Quest Browser. Python 3.11–3.
 
 ## Setup
 
-1. **Print** `web/print-kit.pdf` at 100%. Page 1 has ArUco 4x4_50 markers 10 and 20 (50 mm black square). Page 2 is a 9 × 6 inner-corner checkerboard with 25 mm squares.
-2. **Mount** marker 10 on your sword and marker 20 on the robot sword, arrows toward the tips. Stand the checkerboard on a fixed support near the robot, keeping it and your marker in the camera view. The board is the shared reference that cancels headset movement.
-3. **Link the Quest**: `./quest-link` maps port 8765 over an authorized ADB connection (set `ADB` if it's not on PATH).
-4. In Quest settings, allow **Browser → Permissions → Headset cameras**. Open the app in Quest Browser and choose **Camera + printed markers → Start tracking**.
-5. **Calibrate the camera** once (Camera setup → capture 12 board views at varied tilts and positions → Save calibration). It is saved in `var/camera.json` per camera and resolution.
-6. Hold your normal guard and select **Set my neutral guard**.
-7. **Connect**, optionally **Upright home**, then **Start mirroring**. The robot mirrors your motion relative to wherever it is when mirroring starts. **Stop**, the space bar, or stopping tracking ends the session.
+1. **Tape the right Quest controller** firmly to the sword's hilt. Set `blade_length_m` in `config.toml` to the distance from the controller grip to the blade tip.
+2. **Link the Quest**: `./quest-link` maps port 8765 over an authorized ADB connection (set `ADB` if it's not on PATH).
+3. In Quest Browser, open the app and press **Start tracking on this headset** (enters passthrough).
+4. **Calibrate** with the controller buttons (the controller buzzes on each press):
+   - Point the sword **straight up** and press **B**. This is saved in `var/blade.json`; redo it if you re-tape the controller.
+   - Hold your normal guard, facing the robot, and press **A**. Press A again any time to re-centre.
+5. On the Mac: **Connect**, then **teach the blocks** (below), then **Start blocking**.
+   **Stop**, the space bar, or stopping tracking on the headset ends the session.
 
-Controller and hand-wrist tracking are available as alternatives to markers.
+## Teaching blocks
 
-## Robot behavior
+Only the end pose of each block is recorded; the app plans the motion between them (all joints arrive together).
 
-All motion settings are in `config.toml`. Each control tick reads the joints, solves native IK for the mirrored pose, and sends a joint velocity toward that solution, capped by `max_speed_deg_s` and `max_accel_deg_s2`. IK targets are clamped to the controller's joint ranges. If your marker leaves the frame, the robot continues along its recent motion for `prediction_s`, then holds that pose; it resumes as soon as the marker returns. The session never ends because of tracking loss. If the reference board leaves the frame, its last measured pose is reused for `board_memory_s`; that is accurate only while your head (the camera) stays still. If IK has no solution, the last reachable target is kept. Tracked poses are smoothed with a One Euro filter (steady when still, responsive when swinging), small deadbands ignore jitter around your guard, flipped marker poses are discarded, and IK solutions that suddenly switch arm configuration are ignored unless they persist. Tune these under `smoothing_*`, `deadband_*`, and `ik_jump_deg`.
+1. Press **Freedrive on** and move the arm by hand.
+2. Put the sword where the block should be and press **Save** next to its name. Poses are saved in `var/blocks.json`.
+3. Press **Move here** to replay a block slowly and check it.
 
-Each velocity command expires after `velocity_lease_s` on the controller, so the arm stops if the app dies. Controller errors end the session; warnings are ignored. **Home** and **Start** clear warnings and errors and enable the motors.
+Blocks: guard, high, high left, high right, mid left, mid right, low left, low right, centre (thrust). Names are from the **robot's** point of view (stand behind it): your right-side strikes arrive on the robot's left. Untaught blocks fall back to guard. Keep blocks compact and in front of the robot, angle the blade across the incoming strike, avoid poses with J5 near 0° (wrist singularity), and check transitions between neighbouring blocks.
 
-There is no app-side workspace, floor, or collision checking. Configure any boundaries you need in xArm Studio (reduced mode / safety boundary), where the firmware enforces them.
+## How blocking works
+
+The blade tip's position relative to your guard picks a zone on a 3×3 grid (left/centre/right × high/mid/low). In the centre, a fast push toward the robot is a thrust; otherwise it is guard. The Mac shows the grid live, so you can check it before the robot moves.
+
+- **Look-ahead**: the zone is chosen from where the tip will be `lookahead_s` ahead, to hide system delay.
+- **Hysteresis and dwell**: zone edges overlap by `hysteresis_m`, and the tip must stay in a new zone for `dwell_s` before the robot switches.
+- **Strike lock**: above `strike_speed_m_s`, the robot commits to the block for where the strike started and holds it until the tip has been slower for `release_s`.
+- **Guard**: when your sword is near your guard, or the controller isn't tracked for `tracking_timeout_s`, the robot returns to guard.
+
+## Robot behaviour
+
+The robot follows the chosen block with coordinated joint-velocity control, capped by `max_speed_deg_s` and `max_accel_deg_s2`. Each velocity command expires after `velocity_lease_s` on the controller, so the arm stops if the app dies. On connect, the app sets the foam sword payload and `collision_sensitivity` (runtime only, not saved to the controller). A collision error (C31) is cleared automatically and the robot returns to guard and keeps blocking (`collision_auto_home`). Any other controller error ends the session; Home, Move here and Start clear errors and enable the motors.
+
+There is no app-side workspace or collision checking beyond the taught poses. Use foam swords, teach blocks that meet strikes in front of the robot rather than reaching toward you, and configure any extra boundaries in xArm Studio.
 
 ## Source
 
@@ -35,11 +51,11 @@ config.toml             configuration
 run / quest-link        launcher and headset port mapping
 sword_app/
   __main__.py           local HTTP/WebSocket server
-  vision.py             marker detection and camera calibration
-  state.py              latest pose and neutral guard
-  math3d.py             transforms
-  robot.py              robot control loop
-web/                    interface, camera/WebXR capture, print kit
+  blocking.py           threat zones, hysteresis, strike lock
+  state.py              controller pose, smoothing, blade/guard calibration
+  math3d.py             rotation helpers
+  robot.py              robot control loop and teaching
+web/                    operator page and WebXR controller tracking
 checks/test_core.py     offline tests (python -m unittest discover checks)
-var/                    calibration and session logs (git-ignored)
+var/                    blocks, blade calibration and session logs (git-ignored)
 ```
